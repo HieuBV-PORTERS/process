@@ -1,0 +1,115 @@
+{
+  "timeline": {
+    "startDate": "2026-07-01",
+    "endDate": "2026-10-31"
+  },
+  "tasks": [
+    {
+      "id": "1",
+      "group": "Set up the development environment",
+      "title": "Set up the ATS Connector locally",
+      "assigned": "Unassigned",
+      "priority": "Medium",
+      "startDate": "2026-07-21",
+      "endDate": "2026-07-21",
+      "plannedHours": 16,
+      "actualHours": 8,
+      "percentComplete": 50,
+      "status": "In Progress",
+      "notes": ""
+    },
+    {
+      "id": "2",
+      "group": "Set up the development environment111",
+      "title": "Research & Implement authentication flow",
+      "assigned": "Hieu",
+      "priority": "Medium",
+      "startDate": "2026-07-20",
+      "endDate": "2026-07-20",
+      "plannedHours": 8,
+      "actualHours": 8,
+      "percentComplete": 100,
+      "status": "Done",
+      "notes": ""
+    },
+    {
+      "id": "3",
+      "group": "Set up the development environment",
+      "title": "Set up LocalStack to mock AWS services",
+      "assigned": "Unassigned",
+      "priority": "Medium",
+      "startDate": "",
+      "endDate": "",
+      "plannedHours": 0,
+      "actualHours": 0,
+      "percentComplete": 0,
+      "status": "Todo",
+      "notes": ""
+    },
+    {
+      "id": "4",
+      "group": "Set up the development environment",
+      "title": "Research the required separation",
+      "assigned": "Unassigned",
+      "priority": "Medium",
+      "startDate": "",
+      "endDate": "",
+      "plannedHours": 0,
+      "actualHours": 0,
+      "percentComplete": 0,
+      "status": "Todo",
+      "notes": ""
+    },
+    {
+      "id": "5",
+      "group": "Sync Hito-Link job data",
+      "title": "Design ATS database schema",
+      "assigned": "teamHieu",
+      "priority": "Medium",
+      "startDate": "2026-07-22",
+      "endDate": "2026-07-25",
+      "plannedHours": 24,
+      "actualHours": 24,
+      "percentComplete": 100,
+      "status": "Todo",
+      "notes": ""
+    },
+    {
+      "id": "6",
+      "group": "Sync Hito-Link job data",
+      "title": "Map CSV columns to ATS database fields",
+      "assigned": "Unassigned",
+      "priority": "Medium",
+      "startDate": "",
+      "endDate": "",
+      "plannedHours": 0,
+      "actualHours": 0,
+      "percentComplete": 0,
+      "status": "Todo",
+      "notes": ""
+    },
+    {
+      "id": "7",
+      "group": "Sync Hito-Link job data",
+      "title": "Define job synchronization strategy",
+      "assigned": "Hieu",
+      "priority": "High",
+      "startDate": "2026-07-24",
+      "endDate": "2026-07-28",
+      "plannedHours": 16,
+      "actualHours": 0,
+      "percentComplete": 0,
+      "status": "Todo",
+      "notes": ""
+    }
+  ],
+  "holidays": [
+    {
+      "date": "2026-09-02",
+      "name": "QK"
+    }
+  ],
+  "settings": {
+    "passcode": "porters"
+  }
+}

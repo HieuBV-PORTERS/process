@@ -1,0 +1,12 @@
+{
+    "name": "project-progress-tracker",
+    "version": "1.0.0",
+    "private": true,
+    "scripts": {
+        "start": "node server.js"
+    },
+    "dependencies": {
+        "express": "^4.18.2",
+        "@vercel/kv": "^2.0.0"
+    }
+}

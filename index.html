@@ -1,0 +1,1712 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gantt Chart & Progress Tracking Dashboard</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- PapaParse for CSV parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Fixed Sticky Positioning for Header & Columns */
+        .sticky-col-1 {
+            position: sticky;
+            left: 0px;
+            z-index: 20;
+            width: 45px;
+            min-width: 45px;
+            max-width: 45px;
+            box-sizing: border-box;
+        }
+
+        .sticky-col-2 {
+            position: sticky;
+            left: 45px;
+            z-index: 20;
+            width: 160px;
+            min-width: 160px;
+            max-width: 160px;
+            box-sizing: border-box;
+        }
+
+        .sticky-col-3 {
+            position: sticky;
+            left: 205px;
+            z-index: 20;
+            width: 240px;
+            min-width: 240px;
+            max-width: 240px;
+            box-sizing: border-box;
+        }
+
+        .sticky-col-4 {
+            position: sticky;
+            left: 445px;
+            z-index: 20;
+            width: 115px;
+            min-width: 115px;
+            max-width: 115px;
+            box-sizing: border-box;
+        }
+
+        .sticky-col-5 {
+            position: sticky;
+            left: 560px;
+            z-index: 20;
+            width: 75px;
+            min-width: 75px;
+            max-width: 75px;
+            box-sizing: border-box;
+            border-right: 2px solid #cbd5e1 !important;
+        }
+
+        /* Top-Left Header Cells: Must stay on top of both scrolling headers and body cells */
+        th.sticky-col-1,
+        th.sticky-col-2,
+        th.sticky-col-3,
+        th.sticky-col-4,
+        th.sticky-col-5 {
+            z-index: 40 !important;
+            background-color: #0f172a !important;
+            /* Slate 900 */
+        }
+
+        .sticky-header {
+            position: sticky;
+            top: 0;
+            z-index: 30;
+        }
+
+        /* Shadow effect for sticky column 5 to visually divide frozen columns from scrollable timeline */
+        .sticky-col-5::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            right: -6px;
+            bottom: 0;
+            width: 6px;
+            pointer-events: none;
+            background: linear-gradient(to right, rgba(0, 0, 0, 0.12), transparent);
+        }
+
+        /* Class đè nền trắng đục tuyệt đối cho các ô Sticky */
+        .bg-sticky {
+            background-color: #ffffff !important;
+        }
+
+        tr:hover .bg-sticky {
+            background-color: #f8fafc !important;
+        }
+
+        /* Pattern gạch chéo cho tiến độ chưa làm */
+        .stripe-pattern {
+            background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.25) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.25) 50%, rgba(255, 255, 255, 0.25) 75%, transparent 75%, transparent);
+            background-size: 1rem 1rem;
+        }
+
+        /* Language switcher buttons */
+        .lang-btn {
+            background-color: #f1f5f9;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+            transition: all 0.15s ease;
+        }
+
+        .lang-btn.active {
+            background-color: #4f46e5;
+            color: #ffffff;
+            border-color: #4f46e5;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-100 text-slate-800 font-sans antialiased min-h-screen p-4 md:p-6">
+
+    <!-- Passcode Gate -->
+    <div id="passcodeGate"
+        class="fixed inset-0 z-[100] bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl border border-slate-200 p-6 text-center">
+            <div
+                class="mx-auto mb-4 w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-100">
+                <i class="fa-solid fa-lock text-2xl"></i>
+            </div>
+            <h2 class="text-lg font-bold text-slate-900" data-i18n="gateTitle">Yêu cầu Passcode</h2>
+            <p class="text-sm text-slate-500 mt-1 mb-4" data-i18n="gateSubtitle">Nhập passcode để truy cập bảng theo
+                dõi tiến độ.</p>
+            <input id="gatePasscodeInput" type="password" data-i18n-placeholder="gatePlaceholder"
+                placeholder="Nhập passcode..."
+                class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-center outline-none focus:border-indigo-500"
+                autocomplete="off">
+            <p id="gateError" class="hidden text-xs text-rose-600 font-semibold mt-2" data-i18n="gateError">Passcode
+                không đúng. Vui lòng thử lại.</p>
+            <button onclick="submitPasscode()" data-i18n="gateSubmit"
+                class="mt-4 w-full rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm px-4 py-2.5 transition-all">Mở
+                khóa</button>
+            <div class="flex items-center justify-center gap-2 mt-5 pt-4 border-t border-slate-100">
+                <button onclick="setLanguage('vi')" data-lang-btn="vi"
+                    class="lang-btn px-2.5 py-1 rounded-lg text-xs font-semibold">VI</button>
+                <button onclick="setLanguage('en')" data-lang-btn="en"
+                    class="lang-btn px-2.5 py-1 rounded-lg text-xs font-semibold">EN</button>
+                <button onclick="setLanguage('ja')" data-lang-btn="ja"
+                    class="lang-btn px-2.5 py-1 rounded-lg text-xs font-semibold">日本語</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-[1700px] mx-auto space-y-5">
+
+        <!-- Header & Action Bar -->
+        <header
+            class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+            <div>
+                <div class="flex items-center gap-3">
+                    <div class="p-2.5 bg-indigo-600 text-white rounded-xl shadow-md shadow-indigo-100">
+                        <i class="fa-solid fa-chart-gantt text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-slate-900">Project Progress Tracker & Gantt</h1>
+                        <p class="text-xs text-slate-500" data-i18n="appSubtitle">Tự động đồng bộ tiến độ, phân tích
+                            thời gian và phân công nhân sự</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="flex flex-wrap items-center gap-3">
+                <!-- Language Switcher -->
+                <div class="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl p-1">
+                    <button onclick="setLanguage('vi')" data-lang-btn="vi"
+                        class="lang-btn px-2.5 py-1.5 rounded-lg text-[11px] font-bold">VI</button>
+                    <button onclick="setLanguage('en')" data-lang-btn="en"
+                        class="lang-btn px-2.5 py-1.5 rounded-lg text-[11px] font-bold">EN</button>
+                    <button onclick="setLanguage('ja')" data-lang-btn="ja"
+                        class="lang-btn px-2.5 py-1.5 rounded-lg text-[11px] font-bold">日本語</button>
+                </div>
+
+                <!-- Range Filter -->
+                <div class="flex items-center bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs">
+                    <i class="fa-regular fa-calendar text-slate-400 mr-2"></i>
+                    <input type="date" id="timelineStart"
+                        class="bg-transparent font-medium outline-none text-slate-700">
+                    <span class="mx-1 text-slate-400">→</span>
+                    <input type="date" id="timelineEnd" class="bg-transparent font-medium outline-none text-slate-700">
+                </div>
+
+                <!-- Reload Button -->
+                <button onclick="loadTimelineFile()"
+                    class="flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold text-xs px-3.5 py-2 rounded-xl transition-all border border-indigo-200">
+                    <i class="fa-solid fa-rotate-right" id="reloadIcon"></i>
+                    <span data-i18n="btnReload">Tải lại File</span>
+                </button>
+
+                <!-- Auto Sync Toggle -->
+                <label
+                    class="flex items-center gap-2 cursor-pointer bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-xs">
+                    <input type="checkbox" id="autoRefresh" onchange="toggleAutoRefresh(this)"
+                        class="rounded text-indigo-600 focus:ring-indigo-500">
+                    <span class="text-slate-600 font-medium" data-i18n="lblAutoSync">Tự động Sync (3s)</span>
+                </label>
+
+                <!-- Manual File Selector -->
+                <label
+                    class="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs px-3.5 py-2 rounded-xl cursor-pointer transition-all shadow-sm">
+                    <i class="fa-solid fa-file-import"></i>
+                    <span data-i18n="btnChooseCsv">Chọn File CSV</span>
+                    <input type="file" id="fileInput" accept=".csv, .txt" onchange="handleFileSelect(event)"
+                        class="hidden">
+                </label>
+                <button onclick="openTaskForm()"
+                    class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-3.5 py-2 rounded-xl transition-all shadow-sm">
+                    <i class="fa-solid fa-plus"></i>
+                    <span data-i18n="btnAddTask">Thêm Task</span>
+                </button>
+                <button onclick="openHolidaySettings()"
+                    class="flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs px-3.5 py-2 rounded-xl transition-all shadow-sm">
+                    <i class="fa-solid fa-calendar-days"></i>
+                    <span data-i18n="btnHolidays">Ngày nghỉ lễ</span>
+                </button>
+                <button onclick="lockApp()"
+                    class="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 text-slate-600 font-semibold text-xs px-3.5 py-2 rounded-xl transition-all border border-slate-200">
+                    <i class="fa-solid fa-lock"></i>
+                    <span data-i18n="btnLock">Khóa lại</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Top Metrics Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+            <!-- Total Progress Card -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-400"
+                        data-i18n="metricOverallProgress">Tiến độ tổng thể</span>
+                    <span class="p-2 bg-emerald-50 text-emerald-600 rounded-lg text-sm"><i
+                            class="fa-solid fa-chart-line"></i></span>
+                </div>
+                <div class="flex items-baseline gap-2">
+                    <span class="text-2xl font-black text-slate-900" id="metricProgress">0%</span>
+                    <span class="text-xs text-slate-500" id="metricCompletedTasks">0/0 Task xong</span>
+                </div>
+                <div class="w-full bg-slate-100 h-2 rounded-full mt-3 overflow-hidden">
+                    <div id="metricProgressBar" class="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                        style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Remaining Hours Needed Card -->
+            <div
+                class="bg-white p-4 rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50/40 to-white shadow-sm">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-amber-700"
+                        data-i18n="metricNeededToFinish">Cần làm để hoàn
+                        thành</span>
+                    <span class="p-2 bg-amber-100 text-amber-700 rounded-lg text-sm"><i
+                            class="fa-solid fa-hourglass-half"></i></span>
+                </div>
+                <div class="flex items-baseline gap-2">
+                    <span class="text-2xl font-black text-amber-900" id="metricRemainingHours">0 hrs</span>
+                    <span class="text-xs text-amber-600 font-medium" data-i18n="hoursRemainingLabel">Giờ còn lại</span>
+                </div>
+                <p class="text-[11px] text-amber-600 mt-2 font-medium" id="metricWorkloadEstimate"
+                    data-i18n="metricEstimateDefault">Dự kiến hoàn thành
+                    đúng tiến
+                    độ</p>
+            </div>
+
+            <!-- Hours Tracking -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-400"
+                        data-i18n="hoursTrackingTitle">Giờ làm (Planned /
+                        Actual)</span>
+                    <span class="p-2 bg-indigo-50 text-indigo-600 rounded-lg text-sm"><i
+                            class="fa-solid fa-clock"></i></span>
+                </div>
+                <div class="flex items-baseline gap-2">
+                    <span class="text-2xl font-black text-slate-900" id="metricActualHours">0h</span>
+                    <span class="text-xs text-slate-400">/ <span id="metricPlannedHours"
+                            class="font-bold text-slate-600">0h</span> <span
+                            data-i18n="plannedSuffix">kế hoạch</span></span>
+                </div>
+                <p class="text-[11px] text-slate-500 mt-2" id="metricEfficiency" data-i18n="metricEfficiency">Hiệu
+                    suất tiêu tốn thời gian</p>
+            </div>
+
+            <!-- Task Status Breakdown -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-400"
+                        data-i18n="taskStatusTitle">Trạng thái công
+                        việc</span>
+                    <span class="p-2 bg-blue-50 text-blue-600 rounded-lg text-sm"><i
+                            class="fa-solid fa-list-check"></i></span>
+                </div>
+                <div class="flex items-center gap-3 text-xs mt-1">
+                    <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-slate-300"></span>
+                        <span id="countTodo" class="font-semibold">0</span> <span
+                            data-i18n="statusTodo">Todo</span>
+                    </div>
+                    <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                        <span id="countInProgress" class="font-semibold">0</span> <span
+                            data-i18n="statusDoing">Doing</span>
+                    </div>
+                    <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                        <span id="countDone" class="font-semibold">0</span> <span
+                            data-i18n="statusDone">Done</span>
+                    </div>
+                </div>
+                <div class="w-full bg-slate-100 h-2 rounded-full mt-3 overflow-hidden flex">
+                    <div id="barTodo" class="bg-slate-300 h-full"></div>
+                    <div id="barInProgress" class="bg-blue-500 h-full"></div>
+                    <div id="barDone" class="bg-emerald-500 h-full"></div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Filter & Search Bar -->
+        <div
+            class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div class="flex items-center gap-2 flex-grow max-w-xs bg-slate-100 px-3 py-2 rounded-lg">
+                <i class="fa-solid fa-magnifying-glass text-slate-400"></i>
+                <input type="text" id="searchInput" oninput="applyFilters()" data-i18n-placeholder="searchPlaceholder"
+                    placeholder="Tìm theo Task, Người gán..." class="bg-transparent w-full outline-none">
+            </div>
+
+            <div class="flex flex-wrap items-center gap-3">
+                <!-- Date Schedule Filter -->
+                <div class="flex items-center gap-1.5 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-lg">
+                    <i class="fa-solid fa-filter text-indigo-500"></i>
+                    <label class="text-indigo-900 font-semibold" data-i18n="filterDateLabel">Lọc ngày:</label>
+                    <select id="dateFilter" onchange="applyFilters()"
+                        class="bg-transparent border-none outline-none font-semibold text-indigo-700 cursor-pointer">
+                        <option value="HAS_DATE_FIRST" data-i18n="dateFilterOpt1">✨ Ưu tiên Task chuẩn ngày lên đầu</option>
+                        <option value="HAS_DATE_ONLY" data-i18n="dateFilterOpt2">🎯 Chỉ xem Task ĐÃ CÓ ngày gốc</option>
+                        <option value="NO_DATE_ONLY" data-i18n="dateFilterOpt3">⏳ Chỉ xem Task THIẾU End Date (Dùng ngày hiện tại)</option>
+                        <option value="ALL" data-i18n="dateFilterOpt4">📋 Giữ nguyên thứ tự gốc</option>
+                    </select>
+                </div>
+
+                <!-- Assignee Filter -->
+                <div class="flex items-center gap-1.5 bg-slate-100 px-3 py-1.5 rounded-lg">
+                    <i class="fa-solid fa-user-check text-slate-500"></i>
+                    <label class="text-slate-500 font-medium" data-i18n="assigneeLabel">Người đảm nhiệm:</label>
+                    <select id="assigneeFilter" onchange="applyFilters()"
+                        class="bg-transparent border-none outline-none font-medium text-slate-700 cursor-pointer">
+                        <option value="ALL" data-i18n="allAssignees">Tất cả nhân sự</option>
+                    </select>
+                </div>
+
+                <!-- Feature Group Filter -->
+                <div class="flex items-center gap-1.5 bg-slate-100 px-3 py-1.5 rounded-lg">
+                    <label class="text-slate-500 font-medium" data-i18n="groupLabel">Feature Group:</label>
+                    <select id="groupFilter" onchange="applyFilters()"
+                        class="bg-transparent border-none outline-none font-medium text-slate-700 cursor-pointer">
+                        <option value="ALL" data-i18n="allGroups">Tất cả Feature Group</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gantt Chart Container -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="overflow-x-auto overflow-y-auto max-h-[650px] relative" id="ganttViewport">
+                <div id="ganttContainer">
+                    <!-- Rendered Table directly here -->
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="taskModal"
+        class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm items-center justify-center p-4">
+        <div class="bg-white rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden border border-slate-200">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+                <div>
+                    <h2 id="taskModalTitle" class="text-lg font-semibold text-slate-900" data-i18n="addTaskTitle">Thêm
+                        Task mới</h2>
+                    <p class="text-sm text-slate-500" data-i18n="taskModalSubtitle">Nhập thông tin task để cập nhật
+                        lịch và tiến độ.</p>
+                </div>
+                <button onclick="closeTaskForm()" class="text-slate-400 hover:text-slate-700 text-xl">&times;</button>
+            </div>
+            <div class="p-6 grid gap-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <label class="block text-slate-600 text-xs font-semibold"><span
+                            data-i18n="colFeatureGroup">Feature Group</span>
+                        <input id="formGroup" type="text" data-i18n-placeholder="placeholderFeatureGroup"
+                            class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+                            placeholder="Nhóm tính năng"></label>
+                    <label class="block text-slate-600 text-xs font-semibold"><span
+                            data-i18n="colAssigned">Assigned</span>
+                        <input id="formAssigned" type="text" data-i18n-placeholder="placeholderAssigned"
+                            class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+                            placeholder="Người đảm nhiệm"></label>
+                </div>
+                <label class="block text-slate-600 text-xs font-semibold"><span
+                        data-i18n="fieldTitle">Title</span>
+                    <input id="formTitle" type="text" data-i18n-placeholder="placeholderTaskTitle"
+                        class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+                        placeholder="Tiêu đề task"></label>
+                <div class="grid grid-cols-3 gap-4">
+                    <label class="block text-slate-600 text-xs font-semibold"><span
+                            data-i18n="fieldStartDate">Start Date</span>
+                        <input id="formStartDate" type="date"
+                            class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"></label>
+                    <label class="block text-slate-600 text-xs font-semibold"><span
+                            data-i18n="fieldEndDate">End Date</span>
+                        <input id="formEndDate" type="date"
+                            class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"></label>
+                    <label class="block text-slate-600 text-xs font-semibold"><span
+                            data-i18n="fieldPriority">Priority</span>
+                        <select id="formPriority"
+                            class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500">
+                            <option value="Low" data-i18n="priorityLow">Low</option>
+                            <option value="Medium" selected data-i18n="priorityMedium">Medium</option>
+                            <option value="High" data-i18n="priorityHigh">High</option>
+                        </select></label>
+                </div>
+                <div class="grid grid-cols-3 gap-4">
+                    <label class="block text-slate-600 text-xs font-semibold"><span
+                            data-i18n="fieldPlannedHours">Planned Hours</span>
+                        <input id="formPlannedHours" type="number" min="0" step="0.5"
+                            class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"></label>
+                    <label class="block text-slate-600 text-xs font-semibold"><span
+                            data-i18n="fieldActualHours">Actual Hours</span>
+                        <input id="formActualHours" type="number" min="0" step="0.5"
+                            class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"></label>
+                    <label class="block text-slate-600 text-xs font-semibold"><span
+                            data-i18n="fieldPercentComplete">% Complete</span>
+                        <input id="formPercentComplete" type="number" min="0" max="100" step="1"
+                            class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"></label>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <label class="block text-slate-600 text-xs font-semibold"><span
+                            data-i18n="fieldStatus">Status</span>
+                        <input id="formStatus" type="text"
+                            class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+                            placeholder="Todo / In Progress / Done"></label>
+                    <label class="block text-slate-600 text-xs font-semibold"><span
+                            data-i18n="fieldNotes">Notes</span>
+                        <input id="formNotes" type="text" data-i18n-placeholder="placeholderNotes"
+                            class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+                            placeholder="Ghi chú thêm"></label>
+                </div>
+                <div class="flex items-center justify-end gap-3 pt-2 border-t border-slate-200">
+                    <button id="deleteTaskButton" onclick="deleteTask()" data-i18n="btnDeleteTask"
+                        class="hidden rounded-xl bg-red-600 px-5 py-2 text-sm font-semibold text-white hover:bg-red-700">Xóa</button>
+                    <button onclick="closeTaskForm()" data-i18n="btnCancel"
+                        class="rounded-xl border border-slate-300 px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100">Hủy</button>
+                    <button onclick="saveTaskForm()" data-i18n="btnSaveTask"
+                        class="rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700">Lưu
+                        Task</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="holidayModal"
+        class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm items-center justify-center p-4">
+        <div class="bg-white rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden border border-slate-200">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+                <div>
+                    <h2 class="text-lg font-semibold text-slate-900" data-i18n="holidaySettingsTitle">Cài đặt ngày
+                        nghỉ lễ</h2>
+                    <p class="text-sm text-slate-500" data-i18n="holidaySettingsSubtitle">Thêm ngày lễ đặc biệt để
+                        calendar hiển thị đúng.</p>
+                </div>
+                <button onclick="closeHolidaySettings()"
+                    class="text-slate-400 hover:text-slate-700 text-xl">&times;</button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <label class="block text-slate-600 text-xs font-semibold"><span
+                            data-i18n="fieldHolidayDate">Ngày lễ</span>
+                        <input id="holidayDate" type="date"
+                            class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-rose-500"></label>
+                    <label class="block text-slate-600 text-xs font-semibold"><span
+                            data-i18n="fieldHolidayName">Tên ngày lễ</span>
+                        <input id="holidayName" type="text" data-i18n-placeholder="placeholderHolidayName"
+                            class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-rose-500"
+                            placeholder="Ví dụ: Quốc khánh"></label>
+                    <div class="flex items-end">
+                        <button onclick="addHolidayItem()" data-i18n="btnAddHoliday"
+                            class="w-full rounded-xl bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 text-sm font-semibold">Thêm</button>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-slate-700 font-semibold" data-i18n="holidayListTitle">Danh sách ngày nghỉ
+                            lễ</span>
+                        <span id="holidayCount" class="text-xs text-slate-500">0 ngày</span>
+                    </div>
+                    <div id="holidayList" class="space-y-2 text-sm text-slate-700"></div>
+                </div>
+            </div>
+            <div class="flex items-center justify-end gap-3 p-6 border-t border-slate-200">
+                <button onclick="closeHolidaySettings()" data-i18n="btnCancel"
+                    class="rounded-xl border border-slate-300 px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100">Hủy</button>
+                <button onclick="saveHolidaySettings()" data-i18n="btnSaveHolidays"
+                    class="rounded-xl bg-rose-600 px-5 py-2 text-sm font-semibold text-white hover:bg-rose-700">Lưu ngày
+                    lễ</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_TASKS_PATH = '/api/tasks';
+        const API_TIMELINE_PATH = '/api/timeline';
+        const API_HOLIDAYS_PATH = '/api/holidays';
+        const API_AUTH_PATH = '/api/auth/verify';
+        let rawTasks = [];
+        let filteredTasks = [];
+        let autoRefreshTimer = null;
+        let editingTaskId = null;
+        let holidays = [];
+
+        // --- i18n ---------------------------------------------------------
+        const TRANSLATIONS = {
+            vi: {
+                appSubtitle: 'Tự động đồng bộ tiến độ, phân tích thời gian và phân công nhân sự',
+                btnReload: 'Tải lại File',
+                lblAutoSync: 'Tự động Sync (3s)',
+                btnChooseCsv: 'Chọn File CSV',
+                btnAddTask: 'Thêm Task',
+                btnHolidays: 'Ngày nghỉ lễ',
+                btnLock: 'Khóa lại',
+                metricOverallProgress: 'Tiến độ tổng thể',
+                metricNeededToFinish: 'Cần làm để hoàn thành',
+                hoursRemainingLabel: 'Giờ còn lại',
+                metricEstimateDefault: 'Dự kiến hoàn thành đúng tiến độ',
+                hoursTrackingTitle: 'Giờ làm (Planned / Actual)',
+                plannedSuffix: 'kế hoạch',
+                metricEfficiency: 'Hiệu suất tiêu tốn thời gian',
+                taskStatusTitle: 'Trạng thái công việc',
+                statusTodo: 'Todo',
+                statusDoing: 'Doing',
+                statusDone: 'Done',
+                searchPlaceholder: 'Tìm theo Task, Người gán...',
+                filterDateLabel: 'Lọc ngày:',
+                dateFilterOpt1: '✨ Ưu tiên Task chuẩn ngày lên đầu',
+                dateFilterOpt2: '🎯 Chỉ xem Task ĐÃ CÓ ngày gốc',
+                dateFilterOpt3: '⏳ Chỉ xem Task THIẾU End Date (Dùng ngày hiện tại)',
+                dateFilterOpt4: '📋 Giữ nguyên thứ tự gốc',
+                assigneeLabel: 'Người đảm nhiệm:',
+                allAssignees: 'Tất cả nhân sự',
+                groupLabel: 'Feature Group:',
+                allGroups: 'Tất cả Feature Group',
+                colNo: '#',
+                colFeatureGroup: 'Feature Group',
+                colTaskName: 'Tên Task',
+                colAssigned: 'Assigned',
+                colPercentDone: '% Done',
+                monthLabel: 'Tháng {m}, {y}',
+                noTasksFound: 'Không tìm thấy task phù hợp với bộ lọc.',
+                pendingDateConfirm: 'Chờ chốt ngày',
+                doneMissingDate: 'Đã xong (Thiếu ngày chốt)',
+                editBtn: 'Sửa',
+                dayNames: ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'],
+                holidayShort: 'Lễ',
+                unassignedLabel: 'Chưa gán',
+                addTaskTitle: 'Thêm Task mới',
+                editTaskTitle: 'Chỉnh sửa Task',
+                taskModalSubtitle: 'Nhập thông tin task để cập nhật lịch và tiến độ.',
+                fieldTitle: 'Title',
+                placeholderFeatureGroup: 'Nhóm tính năng',
+                placeholderAssigned: 'Người đảm nhiệm',
+                placeholderTaskTitle: 'Tiêu đề task',
+                fieldStartDate: 'Start Date',
+                fieldEndDate: 'End Date',
+                fieldPriority: 'Priority',
+                priorityLow: 'Low',
+                priorityMedium: 'Medium',
+                priorityHigh: 'High',
+                fieldPlannedHours: 'Planned Hours',
+                fieldActualHours: 'Actual Hours',
+                fieldPercentComplete: '% Complete',
+                fieldStatus: 'Status',
+                fieldNotes: 'Notes',
+                placeholderNotes: 'Ghi chú thêm',
+                btnDeleteTask: 'Xóa',
+                btnCancel: 'Hủy',
+                btnSaveTask: 'Lưu Task',
+                holidaySettingsTitle: 'Cài đặt ngày nghỉ lễ',
+                holidaySettingsSubtitle: 'Thêm ngày lễ đặc biệt để calendar hiển thị đúng.',
+                fieldHolidayDate: 'Ngày lễ',
+                fieldHolidayName: 'Tên ngày lễ',
+                placeholderHolidayName: 'Ví dụ: Quốc khánh',
+                btnAddHoliday: 'Thêm',
+                holidayListTitle: 'Danh sách ngày nghỉ lễ',
+                holidayCountSuffix: '{n} ngày',
+                noHolidaysYet: 'Chưa có ngày nghỉ lễ nào.',
+                btnRemove: 'Xóa',
+                btnSaveHolidays: 'Lưu ngày lễ',
+                completedTasksLabel: '{done}/{total} Task xong',
+                workloadEstimate: 'Cần khoảng {days} ngày làm việc (8h/ngày) để hoàn thành.',
+                alertHolidayRequired: 'Vui lòng nhập đủ ngày và tên ngày lễ.',
+                alertHolidaySaveFail: 'Lưu ngày lễ thất bại. Hãy thử lại.',
+                alertTaskSaveFail: 'Lưu task thất bại. Hãy kiểm tra kết nối server.',
+                alertTaskDeleteFail: 'Xóa task thất bại. Hãy kiểm tra kết nối server.',
+                confirmDeleteTask: 'Bạn có chắc chắn muốn xóa task này?',
+                gateTitle: 'Yêu cầu Passcode',
+                gateSubtitle: 'Nhập passcode để truy cập bảng theo dõi tiến độ.',
+                gatePlaceholder: 'Nhập passcode...',
+                gateSubmit: 'Mở khóa',
+                gateError: 'Passcode không đúng. Vui lòng thử lại.'
+            },
+            en: {
+                appSubtitle: 'Automatically sync progress, analyze timelines, and manage assignments',
+                btnReload: 'Reload File',
+                lblAutoSync: 'Auto Sync (3s)',
+                btnChooseCsv: 'Choose CSV File',
+                btnAddTask: 'Add Task',
+                btnHolidays: 'Holidays',
+                btnLock: 'Lock',
+                metricOverallProgress: 'Overall Progress',
+                metricNeededToFinish: 'Needed to Finish',
+                hoursRemainingLabel: 'Hours remaining',
+                metricEstimateDefault: 'Expected to finish on schedule',
+                hoursTrackingTitle: 'Work Hours (Planned / Actual)',
+                plannedSuffix: 'planned',
+                metricEfficiency: 'Time efficiency',
+                taskStatusTitle: 'Task Status',
+                statusTodo: 'Todo',
+                statusDoing: 'Doing',
+                statusDone: 'Done',
+                searchPlaceholder: 'Search by task, assignee...',
+                filterDateLabel: 'Date filter:',
+                dateFilterOpt1: '✨ Prioritize tasks with dates first',
+                dateFilterOpt2: '🎯 Only tasks with original dates',
+                dateFilterOpt3: '⏳ Only tasks missing End Date (uses today)',
+                dateFilterOpt4: '📋 Keep original order',
+                assigneeLabel: 'Assignee:',
+                allAssignees: 'All assignees',
+                groupLabel: 'Feature Group:',
+                allGroups: 'All Feature Groups',
+                colNo: '#',
+                colFeatureGroup: 'Feature Group',
+                colTaskName: 'Task Name',
+                colAssigned: 'Assigned',
+                colPercentDone: '% Done',
+                monthLabel: '{m}/{y}',
+                noTasksFound: 'No tasks match the current filters.',
+                pendingDateConfirm: 'Date pending confirmation',
+                doneMissingDate: 'Done (date not confirmed)',
+                editBtn: 'Edit',
+                dayNames: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'],
+                holidayShort: 'Hol',
+                unassignedLabel: 'Unassigned',
+                addTaskTitle: 'Add New Task',
+                editTaskTitle: 'Edit Task',
+                taskModalSubtitle: 'Enter task info to update the schedule and progress.',
+                fieldTitle: 'Title',
+                placeholderFeatureGroup: 'Feature group name',
+                placeholderAssigned: 'Assignee name',
+                placeholderTaskTitle: 'Task title',
+                fieldStartDate: 'Start Date',
+                fieldEndDate: 'End Date',
+                fieldPriority: 'Priority',
+                priorityLow: 'Low',
+                priorityMedium: 'Medium',
+                priorityHigh: 'High',
+                fieldPlannedHours: 'Planned Hours',
+                fieldActualHours: 'Actual Hours',
+                fieldPercentComplete: '% Complete',
+                fieldStatus: 'Status',
+                fieldNotes: 'Notes',
+                placeholderNotes: 'Additional notes',
+                btnDeleteTask: 'Delete',
+                btnCancel: 'Cancel',
+                btnSaveTask: 'Save Task',
+                holidaySettingsTitle: 'Holiday Settings',
+                holidaySettingsSubtitle: 'Add special holidays so the calendar displays correctly.',
+                fieldHolidayDate: 'Holiday Date',
+                fieldHolidayName: 'Holiday Name',
+                placeholderHolidayName: 'e.g. National Day',
+                btnAddHoliday: 'Add',
+                holidayListTitle: 'Holiday List',
+                holidayCountSuffix: '{n} days',
+                noHolidaysYet: 'No holidays added yet.',
+                btnRemove: 'Remove',
+                btnSaveHolidays: 'Save Holidays',
+                completedTasksLabel: '{done}/{total} tasks done',
+                workloadEstimate: 'About {days} working days (8h/day) needed to finish.',
+                alertHolidayRequired: 'Please enter both a date and a holiday name.',
+                alertHolidaySaveFail: 'Failed to save holidays. Please try again.',
+                alertTaskSaveFail: 'Failed to save task. Please check the server connection.',
+                alertTaskDeleteFail: 'Failed to delete task. Please check the server connection.',
+                confirmDeleteTask: 'Are you sure you want to delete this task?',
+                gateTitle: 'Passcode Required',
+                gateSubtitle: 'Enter the passcode to access the progress dashboard.',
+                gatePlaceholder: 'Enter passcode...',
+                gateSubmit: 'Unlock',
+                gateError: 'Incorrect passcode. Please try again.'
+            },
+            ja: {
+                appSubtitle: '進捗を自動同期し、スケジュールと担当者の割り当てを分析します',
+                btnReload: 'ファイルを再読み込み',
+                lblAutoSync: '自動同期 (3秒)',
+                btnChooseCsv: 'CSVファイルを選択',
+                btnAddTask: 'タスクを追加',
+                btnHolidays: '祝日設定',
+                btnLock: 'ロック',
+                metricOverallProgress: '全体の進捗',
+                metricNeededToFinish: '完了までに必要な作業',
+                hoursRemainingLabel: '残り時間',
+                metricEstimateDefault: '予定通り完了見込み',
+                hoursTrackingTitle: '作業時間（予定 / 実績）',
+                plannedSuffix: '予定',
+                metricEfficiency: '時間効率',
+                taskStatusTitle: 'タスクの状況',
+                statusTodo: '未着手',
+                statusDoing: '進行中',
+                statusDone: '完了',
+                searchPlaceholder: 'タスク・担当者で検索...',
+                filterDateLabel: '日付フィルター:',
+                dateFilterOpt1: '✨ 日付確定タスクを先頭に',
+                dateFilterOpt2: '🎯 元の日付があるタスクのみ',
+                dateFilterOpt3: '⏳ 終了日が未設定のタスクのみ（今日の日付を使用）',
+                dateFilterOpt4: '📋 元の順序を維持',
+                assigneeLabel: '担当者:',
+                allAssignees: 'すべての担当者',
+                groupLabel: '機能グループ:',
+                allGroups: 'すべての機能グループ',
+                colNo: '#',
+                colFeatureGroup: '機能グループ',
+                colTaskName: 'タスク名',
+                colAssigned: '担当者',
+                colPercentDone: '進捗率',
+                monthLabel: '{y}年{m}月',
+                noTasksFound: '条件に一致するタスクが見つかりません。',
+                pendingDateConfirm: '日程未確定',
+                doneMissingDate: '完了（日程未確定）',
+                editBtn: '編集',
+                dayNames: ['日', '月', '火', '水', '木', '金', '土'],
+                holidayShort: '祝',
+                unassignedLabel: '未割り当て',
+                addTaskTitle: '新しいタスクを追加',
+                editTaskTitle: 'タスクを編集',
+                taskModalSubtitle: 'スケジュールと進捗を更新するためタスク情報を入力してください。',
+                fieldTitle: 'タイトル',
+                placeholderFeatureGroup: '機能グループ名',
+                placeholderAssigned: '担当者名',
+                placeholderTaskTitle: 'タスクのタイトル',
+                fieldStartDate: '開始日',
+                fieldEndDate: '終了日',
+                fieldPriority: '優先度',
+                priorityLow: '低',
+                priorityMedium: '中',
+                priorityHigh: '高',
+                fieldPlannedHours: '予定時間',
+                fieldActualHours: '実績時間',
+                fieldPercentComplete: '進捗率(%)',
+                fieldStatus: 'ステータス',
+                fieldNotes: '備考',
+                placeholderNotes: '追加の備考',
+                btnDeleteTask: '削除',
+                btnCancel: 'キャンセル',
+                btnSaveTask: 'タスクを保存',
+                holidaySettingsTitle: '祝日設定',
+                holidaySettingsSubtitle: 'カレンダーが正しく表示されるよう祝日を追加してください。',
+                fieldHolidayDate: '祝日',
+                fieldHolidayName: '祝日名',
+                placeholderHolidayName: '例：建国記念日',
+                btnAddHoliday: '追加',
+                holidayListTitle: '祝日一覧',
+                holidayCountSuffix: '{n}日',
+                noHolidaysYet: '登録されている祝日はありません。',
+                btnRemove: '削除',
+                btnSaveHolidays: '祝日を保存',
+                completedTasksLabel: '{done}/{total} タスク完了',
+                workloadEstimate: '完了までに約{days}営業日（1日8時間）必要です。',
+                alertHolidayRequired: '日付と祝日名を両方入力してください。',
+                alertHolidaySaveFail: '祝日の保存に失敗しました。もう一度お試しください。',
+                alertTaskSaveFail: 'タスクの保存に失敗しました。サーバー接続を確認してください。',
+                alertTaskDeleteFail: 'タスクの削除に失敗しました。サーバー接続を確認してください。',
+                confirmDeleteTask: '本当にこのタスクを削除しますか？',
+                gateTitle: 'パスコードが必要です',
+                gateSubtitle: '進捗ダッシュボードにアクセスするにはパスコードを入力してください。',
+                gatePlaceholder: 'パスコードを入力...',
+                gateSubmit: 'ロック解除',
+                gateError: 'パスコードが違います。もう一度お試しください。'
+            }
+        };
+
+        let currentLang = localStorage.getItem('appLang') || 'vi';
+
+        function t(key, vars) {
+            const dict = TRANSLATIONS[currentLang] || TRANSLATIONS.vi;
+            let str = dict[key] !== undefined ? dict[key] : (TRANSLATIONS.vi[key] !== undefined ? TRANSLATIONS.vi[key] : key);
+            if (vars) {
+                Object.keys(vars).forEach(k => {
+                    str = str.replace(`{${k}}`, vars[k]);
+                });
+            }
+            return str;
+        }
+
+        function setLanguage(lang) {
+            currentLang = TRANSLATIONS[lang] ? lang : 'vi';
+            localStorage.setItem('appLang', currentLang);
+            applyTranslations();
+        }
+
+        function applyTranslations() {
+            document.documentElement.lang = currentLang;
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                el.textContent = t(el.getAttribute('data-i18n'));
+            });
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                el.placeholder = t(el.getAttribute('data-i18n-placeholder'));
+            });
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('data-lang-btn') === currentLang);
+            });
+            if (document.getElementById('groupFilter')) populateDropdowns();
+            if (rawTasks.length > 0) {
+                calculateSummaryMetrics();
+                renderGantt();
+            }
+            if (document.getElementById('holidayList')) renderHolidaySettings();
+        }
+
+        // --- Passcode Gate --------------------------------------------------
+        function isUnlocked() {
+            return localStorage.getItem('appUnlocked') === 'true';
+        }
+
+        function showGate() {
+            document.getElementById('passcodeGate').classList.remove('hidden');
+            document.getElementById('passcodeGate').classList.add('flex');
+            document.getElementById('gatePasscodeInput').value = '';
+            document.getElementById('gateError').classList.add('hidden');
+            document.getElementById('gatePasscodeInput').focus();
+        }
+
+        function hideGate() {
+            document.getElementById('passcodeGate').classList.add('hidden');
+            document.getElementById('passcodeGate').classList.remove('flex');
+        }
+
+        async function submitPasscode() {
+            const input = document.getElementById('gatePasscodeInput');
+            const errorEl = document.getElementById('gateError');
+            const passcode = input.value;
+            try {
+                const response = await fetch(API_AUTH_PATH, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ passcode })
+                });
+                const result = await response.json();
+                if (result.ok) {
+                    localStorage.setItem('appUnlocked', 'true');
+                    errorEl.classList.add('hidden');
+                    hideGate();
+                    loadTimelineFile();
+                } else {
+                    errorEl.classList.remove('hidden');
+                }
+            } catch (err) {
+                errorEl.classList.remove('hidden');
+            }
+        }
+
+        function lockApp() {
+            localStorage.removeItem('appUnlocked');
+            showGate();
+        }
+
+        function checkAuthGate() {
+            applyTranslations();
+            if (isUnlocked()) {
+                hideGate();
+                loadTimelineFile();
+            } else {
+                showGate();
+            }
+        }
+
+        document.getElementById('gatePasscodeInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') submitPasscode();
+        });
+
+        function getLocalDateString(d) {
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // Default Date Range
+        document.getElementById('timelineStart').value = '2026-07-01';
+        document.getElementById('timelineEnd').value = '2026-08-15';
+
+        document.getElementById('timelineStart').addEventListener('change', async () => {
+            await saveTimelineRange(document.getElementById('timelineStart').value, document.getElementById('timelineEnd').value);
+            renderGantt();
+        });
+        document.getElementById('timelineEnd').addEventListener('change', async () => {
+            await saveTimelineRange(document.getElementById('timelineStart').value, document.getElementById('timelineEnd').value);
+            renderGantt();
+        });
+
+        window.addEventListener('DOMContentLoaded', () => {
+            checkAuthGate();
+        });
+
+        function toggleAutoRefresh(checkbox) {
+            if (checkbox.checked) {
+                autoRefreshTimer = setInterval(() => {
+                    loadTimelineFile(true);
+                }, 3000);
+            } else {
+                clearInterval(autoRefreshTimer);
+            }
+        }
+
+        async function loadTimelineFile(isSilent = false) {
+            const reloadIcon = document.getElementById('reloadIcon');
+            if (!isSilent) reloadIcon.classList.add('fa-spin');
+
+            try {
+                const response = await fetch(API_TASKS_PATH + '?t=' + new Date().getTime());
+                if (!response.ok) throw new Error("Không thể lấy dữ liệu từ server");
+                const jsonData = await response.json();
+                if (jsonData.timeline) {
+                    if (jsonData.timeline.startDate) {
+                        document.getElementById('timelineStart').value = jsonData.timeline.startDate;
+                    }
+                    if (jsonData.timeline.endDate) {
+                        document.getElementById('timelineEnd').value = jsonData.timeline.endDate;
+                    }
+                }
+                holidays = Array.isArray(jsonData.holidays) ? jsonData.holidays : [];
+                processServerRows(jsonData.tasks || jsonData);
+            } catch (err) {
+                if (!isSilent && rawTasks.length === 0) {
+                    loadDefaultSampleData();
+                }
+            } finally {
+                setTimeout(() => reloadIcon.classList.remove('fa-spin'), 400);
+            }
+        }
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                parseCSVData(e.target.result);
+            };
+            reader.readAsText(file);
+        }
+
+        function parseCSVData(content) {
+            Papa.parse(content, {
+                header: true,
+                skipEmptyLines: true,
+                dynamicTyping: false,
+                complete: function (results) {
+                    processParsedRows(results.data);
+                },
+                error: function () {
+                    parseRawTextFallback(content);
+                }
+            });
+        }
+
+        function parseRawTextFallback(text) {
+            const lines = text.trim().split('\n');
+            const data = [];
+            lines.forEach((line, index) => {
+                if (index === 0 && line.toLowerCase().includes('feature group')) return;
+                const cols = line.split('\t');
+                if (cols.length >= 3) {
+                    data.push({
+                        "No.": cols[0],
+                        "Feature Group": cols[1],
+                        "Title": cols[2],
+                        "Assigned": cols[3],
+                        "Priority": cols[4],
+                        "Start Date": cols[5],
+                        "End Date": cols[6],
+                        "Planned Hours": cols[7],
+                        "Actual Hours": cols[8],
+                        "% Complete": cols[9],
+                        "Status": cols[10],
+                        "Notes": cols[11] || ''
+                    });
+                }
+            });
+            processParsedRows(data);
+        }
+
+        function processServerRows(data) {
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+            rawTasks = data.map((item, idx) => {
+                const planned = parseFloat(item.plannedHours) || 0;
+                const actual = parseFloat(item.actualHours) || 0;
+                const percent = parseFloat(item.percentComplete) || 0;
+                const parsedStart = parseFlexibleDate(item.startDate);
+                const parsedEnd = parseFlexibleDate(item.endDate);
+                const isOriginalEndDateMissing = !parsedEnd;
+                const startDate = parsedStart || parsedEnd || new Date(today);
+                const endDate = parsedEnd || new Date(today);
+                const remainingHours = Math.max(0, planned * (1 - percent / 100));
+
+                return {
+                    id: item.id || (item['No.'] || idx + 1),
+                    group: item.group || item['Feature Group'] || 'Chưa phân nhóm',
+                    title: item.title || item['Title'] || 'Không có tiêu đề',
+                    assigned: item.assigned || item['Assigned'] || 'Unassigned',
+                    priority: item.priority || item['Priority'] || 'Medium',
+                    startDate,
+                    endDate,
+                    hasOriginalDates: (!isOriginalEndDateMissing && !!parsedStart),
+                    isOriginalEndDateMissing,
+                    plannedHours: planned,
+                    actualHours: actual,
+                    percentComplete: percent,
+                    remainingHours,
+                    status: item.status || item['Status'] || (percent === 100 ? 'Done' : (percent > 0 ? 'In Progress' : 'Todo')),
+                    notes: item.notes || item['Notes'] || ''
+                };
+            });
+
+            populateDropdowns();
+            applyFilters();
+        }
+
+        function processParsedRows(data) {
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+            rawTasks = data.map((item, idx) => {
+                const planned = parseFloat(item['Planned Hours']) || 0;
+                const actual = parseFloat(item['Actual Hours']) || 0;
+                let pctRaw = String(item['% Complete'] || '0').replace('%', '').trim();
+                const percent = parseFloat(pctRaw) || 0;
+
+                const parsedStart = parseFlexibleDate(item['Start Date']);
+                const parsedEnd = parseFlexibleDate(item['End Date']);
+
+                const isOriginalEndDateMissing = !parsedEnd;
+
+                const startDate = parsedStart || parsedEnd || new Date(today);
+                const endDate = parsedEnd || new Date(today);
+
+                const remainingHours = Math.max(0, planned * (1 - percent / 100));
+
+                return {
+                    id: item['No.'] || (idx + 1),
+                    group: item['Feature Group'] || 'Chưa phân nhóm',
+                    title: item['Title'] || 'Không có tiêu đề',
+                    assigned: item['Assigned'] || 'Unassigned',
+                    priority: item['Priority'] || 'Medium',
+                    startDate: startDate,
+                    endDate: endDate,
+                    hasOriginalDates: (!isOriginalEndDateMissing && !!parsedStart),
+                    isOriginalEndDateMissing: isOriginalEndDateMissing,
+                    plannedHours: planned,
+                    actualHours: actual,
+                    percentComplete: percent,
+                    remainingHours: remainingHours,
+                    status: item['Status'] || (percent === 100 ? 'Done' : (percent > 0 ? 'In Progress' : 'Todo')),
+                    notes: item['Notes'] || ''
+                };
+            });
+
+            populateDropdowns();
+            applyFilters();
+        }
+
+        function parseFlexibleDate(dateStr) {
+            if (!dateStr) return null;
+            dateStr = String(dateStr).trim();
+            if (!dateStr) return null;
+
+            if (dateStr.includes('T')) {
+                const d = new Date(dateStr);
+                return isNaN(d.getTime()) ? null : d;
+            }
+
+            let year, month, day;
+            if (dateStr.includes('/')) {
+                const parts = dateStr.split('/');
+                if (parts.length === 3 && parts[2]) {
+                    day = parseInt(parts[0], 10);
+                    month = parseInt(parts[1], 10) - 1;
+                    year = parseInt(parts[2], 10);
+                }
+            } else if (dateStr.includes('-')) {
+                const parts = dateStr.split('-');
+                if (parts.length === 3 && parts[0]) {
+                    year = parseInt(parts[0], 10);
+                    month = parseInt(parts[1], 10) - 1;
+                    day = parseInt(parts[2], 10);
+                }
+            }
+
+            if (year && !isNaN(month) && day) {
+                return new Date(year, month, day);
+            }
+
+            return null;
+        }
+
+        function populateDropdowns() {
+            const groupSelect = document.getElementById('groupFilter');
+            const currentGroup = groupSelect.value || 'ALL';
+            const groups = [...new Set(rawTasks.map(t => t.group))].filter(Boolean);
+            let groupHtml = `<option value="ALL">${t('allGroups')} (${groups.length})</option>`;
+            groups.forEach(g => {
+                groupHtml += `<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`;
+            });
+            groupSelect.innerHTML = groupHtml;
+            groupSelect.value = currentGroup;
+
+            const assigneeSelect = document.getElementById('assigneeFilter');
+            const currentAssignee = assigneeSelect.value || 'ALL';
+            const assignees = [...new Set(rawTasks.map(t => t.assigned))].filter(Boolean);
+            let assigneeHtml = `<option value="ALL">${t('allAssignees')} (${assignees.length})</option>`;
+            assignees.forEach(a => {
+                assigneeHtml += `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`;
+            });
+            assigneeSelect.innerHTML = assigneeHtml;
+            assigneeSelect.value = currentAssignee;
+        }
+
+        function applyFilters() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const selectedGroup = document.getElementById('groupFilter').value;
+            const selectedAssignee = document.getElementById('assigneeFilter').value;
+            const dateFilterMode = document.getElementById('dateFilter').value;
+
+            let result = rawTasks.filter(t => {
+                const matchesSearch = t.title.toLowerCase().includes(searchTerm) ||
+                    t.group.toLowerCase().includes(searchTerm) ||
+                    t.assigned.toLowerCase().includes(searchTerm);
+                const matchesGroup = selectedGroup === 'ALL' || t.group === selectedGroup;
+                const matchesAssignee = selectedAssignee === 'ALL' || t.assigned === selectedAssignee;
+
+                return matchesSearch && matchesGroup && matchesAssignee;
+            });
+
+            if (dateFilterMode === 'HAS_DATE_ONLY') {
+                result = result.filter(t => !t.isOriginalEndDateMissing);
+            } else if (dateFilterMode === 'NO_DATE_ONLY') {
+                result = result.filter(t => t.isOriginalEndDateMissing);
+            } else if (dateFilterMode === 'HAS_DATE_FIRST') {
+                result.sort((a, b) => {
+                    if (!a.isOriginalEndDateMissing && b.isOriginalEndDateMissing) return -1;
+                    if (a.isOriginalEndDateMissing && !b.isOriginalEndDateMissing) return 1;
+                    return a.startDate.getTime() - b.startDate.getTime();
+                });
+            }
+
+            filteredTasks = result;
+
+            calculateSummaryMetrics();
+            renderGantt();
+        }
+
+        function calculateSummaryMetrics() {
+            const totalTasks = rawTasks.length;
+            if (totalTasks === 0) return;
+
+            let totalPlanned = 0;
+            let totalActual = 0;
+            let totalRemaining = 0;
+            let sumPercent = 0;
+
+            let countDone = 0;
+            let countInProgress = 0;
+            let countTodo = 0;
+
+            rawTasks.forEach(t => {
+                totalPlanned += t.plannedHours;
+                totalActual += t.actualHours;
+                totalRemaining += t.remainingHours;
+                sumPercent += t.percentComplete;
+
+                if (t.percentComplete === 100 || t.status.toLowerCase() === 'done') countDone++;
+                else if (t.percentComplete > 0 || t.status.toLowerCase() === 'in progress') countInProgress++;
+                else countTodo++;
+            });
+
+            const avgPercent = Math.round(sumPercent / totalTasks);
+
+            document.getElementById('metricProgress').innerText = `${avgPercent}%`;
+            document.getElementById('metricCompletedTasks').innerText = t('completedTasksLabel', { done: countDone, total: totalTasks });
+            document.getElementById('metricProgressBar').style.width = `${avgPercent}%`;
+
+            document.getElementById('metricRemainingHours').innerText = `${Math.round(totalRemaining * 10) / 10}h`;
+            document.getElementById('metricPlannedHours').innerText = `${totalPlanned}h`;
+            document.getElementById('metricActualHours').innerText = `${totalActual}h`;
+
+            document.getElementById('countTodo').innerText = countTodo;
+            document.getElementById('countInProgress').innerText = countInProgress;
+            document.getElementById('countDone').innerText = countDone;
+
+            document.getElementById('barTodo').style.width = `${(countTodo / totalTasks) * 100}%`;
+            document.getElementById('barInProgress').style.width = `${(countInProgress / totalTasks) * 100}%`;
+            document.getElementById('barDone').style.width = `${(countDone / totalTasks) * 100}%`;
+
+            const remainingDays = Math.ceil(totalRemaining / 8);
+            document.getElementById('metricWorkloadEstimate').innerText = t('workloadEstimate', { days: remainingDays });
+        }
+
+        function openTaskForm(taskId = null) {
+            editingTaskId = taskId;
+            const modalTitle = document.getElementById('taskModalTitle');
+            const formGroup = document.getElementById('formGroup');
+            const formTitle = document.getElementById('formTitle');
+            const formAssigned = document.getElementById('formAssigned');
+            const formPriority = document.getElementById('formPriority');
+            const formStartDate = document.getElementById('formStartDate');
+            const formEndDate = document.getElementById('formEndDate');
+            const formPlannedHours = document.getElementById('formPlannedHours');
+            const formActualHours = document.getElementById('formActualHours');
+            const formPercentComplete = document.getElementById('formPercentComplete');
+            const formStatus = document.getElementById('formStatus');
+            const formNotes = document.getElementById('formNotes');
+
+            if (taskId) {
+                const task = rawTasks.find(t => String(t.id) === String(taskId));
+                if (task) {
+                    modalTitle.innerText = t('editTaskTitle');
+                    formGroup.value = task.group || '';
+                    formTitle.value = task.title || '';
+                    formAssigned.value = task.assigned || '';
+                    formPriority.value = task.priority || 'Medium';
+                    formStartDate.value = task.startDate ? getLocalDateString(task.startDate) : '';
+                    formEndDate.value = task.endDate ? getLocalDateString(task.endDate) : '';
+                    formPlannedHours.value = task.plannedHours || 0;
+                    formActualHours.value = task.actualHours || 0;
+                    formPercentComplete.value = task.percentComplete || 0;
+                    formStatus.value = task.status || '';
+                    formNotes.value = task.notes || '';
+                    document.getElementById('deleteTaskButton').classList.remove('hidden');
+                }
+            } else {
+                modalTitle.innerText = t('addTaskTitle');
+                formGroup.value = '';
+                formTitle.value = '';
+                formAssigned.value = '';
+                formPriority.value = 'Medium';
+                formStartDate.value = '';
+                formEndDate.value = '';
+                formPlannedHours.value = 0;
+                formActualHours.value = 0;
+                formPercentComplete.value = 0;
+                formStatus.value = '';
+                formNotes.value = '';
+                document.getElementById('deleteTaskButton').classList.add('hidden');
+            }
+
+            document.getElementById('taskModal').classList.remove('hidden');
+            document.getElementById('taskModal').classList.add('flex');
+        }
+
+        function closeTaskForm() {
+            document.getElementById('taskModal').classList.add('hidden');
+            document.getElementById('taskModal').classList.remove('flex');
+            document.getElementById('deleteTaskButton').classList.add('hidden');
+            editingTaskId = null;
+        }
+
+        async function saveTaskForm() {
+            const group = document.getElementById('formGroup').value.trim() || 'Chưa phân nhóm';
+            const title = document.getElementById('formTitle').value.trim() || 'Không có tiêu đề';
+            const assigned = document.getElementById('formAssigned').value.trim() || 'Unassigned';
+            const priority = document.getElementById('formPriority').value;
+            const startDateValue = document.getElementById('formStartDate').value;
+            const endDateValue = document.getElementById('formEndDate').value;
+            const plannedHours = parseFloat(document.getElementById('formPlannedHours').value) || 0;
+            const actualHours = parseFloat(document.getElementById('formActualHours').value) || 0;
+            const percentComplete = Math.min(100, Math.max(0, parseInt(document.getElementById('formPercentComplete').value, 10) || 0));
+            const status = document.getElementById('formStatus').value.trim() || (percentComplete === 100 ? 'Done' : (percentComplete > 0 ? 'In Progress' : 'Todo'));
+            const notes = document.getElementById('formNotes').value.trim();
+
+            const startDate = startDateValue ? new Date(startDateValue) : null;
+            const endDate = endDateValue ? new Date(endDateValue) : null;
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const normalizedStart = startDate || endDate || new Date(today);
+            const normalizedEnd = endDate || startDate || new Date(today);
+            const isOriginalEndDateMissing = !endDate;
+            const remainingHours = Math.max(0, plannedHours * (1 - percentComplete / 100));
+
+            const payload = {
+                group,
+                title,
+                assigned,
+                priority,
+                startDate: startDate ? getLocalDateString(startDate) : '',
+                endDate: endDate ? getLocalDateString(endDate) : '',
+                plannedHours,
+                actualHours,
+                percentComplete,
+                status,
+                notes
+            };
+
+            try {
+                if (editingTaskId) {
+                    const response = await fetch(`${API_TASKS_PATH}/${editingTaskId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) throw new Error('Không thể lưu task');
+                    const updated = await response.json();
+                    const taskIndex = rawTasks.findIndex(t => String(t.id) === String(editingTaskId));
+                    if (taskIndex !== -1) {
+                        rawTasks[taskIndex] = {
+                            ...rawTasks[taskIndex],
+                            ...updated,
+                            startDate: parseFlexibleDate(updated.startDate),
+                            endDate: parseFlexibleDate(updated.endDate),
+                            remainingHours: Math.max(0, updated.plannedHours * (1 - updated.percentComplete / 100)),
+                            hasOriginalDates: !!updated.startDate && !!updated.endDate,
+                            isOriginalEndDateMissing: !updated.endDate
+                        };
+                    }
+                } else {
+                    const response = await fetch(API_TASKS_PATH, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) throw new Error('Không thể tạo task');
+                    const created = await response.json();
+                    rawTasks.push({
+                        ...created,
+                        startDate: parseFlexibleDate(created.startDate),
+                        endDate: parseFlexibleDate(created.endDate),
+                        remainingHours: Math.max(0, created.plannedHours * (1 - created.percentComplete / 100)),
+                        hasOriginalDates: !!created.startDate && !!created.endDate,
+                        isOriginalEndDateMissing: !created.endDate
+                    });
+                }
+
+                populateDropdowns();
+                applyFilters();
+                closeTaskForm();
+            } catch (err) {
+                alert(t('alertTaskSaveFail'));
+            }
+        }
+
+        async function deleteTask() {
+            if (!editingTaskId) return;
+            if (!confirm(t('confirmDeleteTask'))) return;
+
+            try {
+                const response = await fetch(`${API_TASKS_PATH}/${editingTaskId}`, {
+                    method: 'DELETE'
+                });
+                if (!response.ok) throw new Error('Không thể xóa task');
+
+                rawTasks = rawTasks.filter(t => String(t.id) !== String(editingTaskId));
+                populateDropdowns();
+                applyFilters();
+                closeTaskForm();
+            } catch (err) {
+                alert(t('alertTaskDeleteFail'));
+            }
+        }
+
+        function renderGantt() {
+            const container = document.getElementById('ganttContainer');
+            const startInput = document.getElementById('timelineStart').value;
+            const endInput = document.getElementById('timelineEnd').value;
+
+            if (!startInput || !endInput) return;
+
+            const [sY, sM, sD] = startInput.split('-').map(Number);
+            const [eY, eM, eD] = endInput.split('-').map(Number);
+
+            const viewStart = new Date(sY, sM - 1, sD);
+            const viewEnd = new Date(eY, eM - 1, eD);
+
+            const days = [];
+            let cur = new Date(viewStart);
+            while (cur <= viewEnd) {
+                days.push(new Date(cur));
+                cur.setDate(cur.getDate() + 1);
+            }
+
+            const monthGroups = [];
+            days.forEach(d => {
+                const monthKey = `${d.getFullYear()}-${d.getMonth() + 1}`;
+                const lastGroup = monthGroups[monthGroups.length - 1];
+                if (lastGroup && lastGroup.key === monthKey) {
+                    lastGroup.count++;
+                } else {
+                    monthGroups.push({
+                        key: monthKey,
+                        label: t('monthLabel', { m: d.getMonth() + 1, y: d.getFullYear() }),
+                        count: 1
+                    });
+                }
+            });
+
+            const todayStr = getLocalDateString(new Date());
+            const holidayDates = new Set(holidays.map(h => h.date));
+
+            let html = `<table class="w-full text-left border-collapse table-fixed min-w-[1600px]">`;
+            html += `<colgroup>`;
+            html += `<col style="width: 45px;">`;
+            html += `<col style="width: 160px;">`;
+            html += `<col style="width: 240px;">`;
+            html += `<col style="width: 115px;">`;
+            html += `<col style="width: 75px;">`;
+            days.forEach(() => {
+                html += `<col style="width: 42px;">`;
+            });
+            html += `</colgroup>`;
+
+            // --- HEADER ROW 1 ---
+            html += `<thead class="bg-slate-900 text-white text-xs sticky-header">`;
+            html += `<tr>`;
+            html += `<th rowspan="2" class="p-2 sticky-col-1 border-r border-slate-700">${t('colNo')}</th>`;
+            html += `<th rowspan="2" class="p-2.5 sticky-col-2 border-r border-slate-700">${t('colFeatureGroup')}</th>`;
+            html += `<th rowspan="2" class="p-2.5 sticky-col-3 border-r border-slate-700">${t('colTaskName')}</th>`;
+            html += `<th rowspan="2" class="p-2.5 sticky-col-4 border-r border-slate-700">${t('colAssigned')}</th>`;
+            html += `<th rowspan="2" class="p-2 sticky-col-5 text-center border-r border-slate-700">${t('colPercentDone')}</th>`;
+
+            monthGroups.forEach(m => {
+                html += `<th colspan="${m.count}" class="p-1.5 text-center bg-slate-800 border-r border-b border-slate-700 font-bold text-[11px] text-indigo-300 tracking-wide uppercase">${m.label}</th>`;
+            });
+            html += `</tr>`;
+
+            // --- HEADER ROW 2 ---
+            html += `<tr>`;
+            days.forEach(d => {
+                const dateStr = getLocalDateString(d);
+                const isToday = (dateStr === todayStr);
+                const isHoliday = holidayDates.has(dateStr);
+                const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+
+                let bgClass = 'bg-slate-900 text-slate-300';
+                if (isWeekend) bgClass = 'bg-slate-700 text-slate-500';
+                if (isHoliday) bgClass = 'bg-rose-600 text-white font-extrabold ring-1 ring-rose-400';
+                if (isToday) bgClass = 'bg-indigo-600 text-white font-extrabold ring-1 ring-indigo-400';
+
+                const dayNum = String(d.getDate()).padStart(2, '0');
+                const dayName = isHoliday ? t('holidayShort') : t('dayNames')[d.getDay()];
+
+                html += `<th class="p-1 text-center min-w-[42px] border-r border-slate-700 text-[10px] font-mono ${bgClass}">`;
+                html += `<div class="text-[11px] font-bold">${dayNum}</div>`;
+                html += `<div class="text-[9px] opacity-70">${dayName}</div>`;
+                html += `</th>`;
+            });
+            html += `</tr></thead><tbody class="divide-y divide-slate-200 text-xs bg-white">`;
+
+            // --- BODY ROWS ---
+            if (filteredTasks.length === 0) {
+                html += `<tr><td colspan="${5 + days.length}" class="p-8 text-center text-slate-400 font-medium">${t('noTasksFound')}</td></tr>`;
+            }
+
+            filteredTasks.forEach((task) => {
+                html += `<tr class="hover:bg-indigo-50/40 transition-colors">`;
+
+                // Thêm bg-sticky đè nền màu trắng tuyệt đối cho 5 cột cố định bên trái
+                html += `<td class="p-2.5 sticky-col-1 bg-sticky font-mono text-center font-bold text-slate-400 border-r border-slate-200 truncate">${task.id}</td>`;
+                html += `<td class="p-2.5 sticky-col-2 bg-sticky font-medium text-slate-600 border-r border-slate-200 truncate" title="${escapeHtml(task.group)}">${escapeHtml(task.group)}</td>`;
+
+                html += `<td class="p-2.5 sticky-col-3 bg-sticky font-semibold text-slate-800 border-r border-slate-200 overflow-hidden">`;
+                html += `<div class="flex items-center justify-between gap-2">`;
+                html += `<div class="truncate text-slate-900" title="${escapeHtml(task.title)}">${escapeHtml(task.title)}</div>`;
+                html += `<button onclick="openTaskForm('${escapeHtml(task.id)}')" class="text-indigo-600 hover:text-indigo-900 text-xs font-semibold px-2 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 transition">${t('editBtn')}</button>`;
+                html += `</div>`;
+
+                if (!task.isOriginalEndDateMissing) {
+                    html += `<div class="text-[10px] text-indigo-600 font-medium truncate">${formatDateDisplay(task.startDate)} → ${formatDateDisplay(task.endDate)}</div>`;
+                } else {
+                    if (task.percentComplete < 100) {
+                        html += `<div class="text-[10px] text-amber-600 font-bold flex items-center gap-1 mt-0.5 truncate" title="${escapeHtml(t('pendingDateConfirm'))}">`;
+                        html += `<i class="fa-solid fa-clock-rotate-left"></i> ${t('pendingDateConfirm')} (${formatDateDisplay(task.endDate)})`;
+                        html += `</div>`;
+                    } else {
+                        html += `<div class="text-[10px] text-emerald-600 font-medium flex items-center gap-1 mt-0.5 truncate">`;
+                        html += `<i class="fa-solid fa-check-double"></i> ${t('doneMissingDate')}`;
+                        html += `</div>`;
+                    }
+                }
+                html += `</td>`;
+
+                const isUnassigned = !task.assigned || task.assigned.toLowerCase() === 'unassigned';
+                const assignedBadge = isUnassigned
+                    ? `<span class="text-slate-400 bg-slate-100 px-2 py-0.5 rounded text-[10px] truncate block max-w-full">${t('unassignedLabel')}</span>`
+                    : `<span class="text-indigo-700 bg-indigo-50 border border-indigo-100 font-semibold px-2 py-0.5 rounded text-[10px] flex items-center gap-1 w-fit max-w-full truncate"><i class="fa-solid fa-user text-[9px]"></i> ${escapeHtml(task.assigned)}</span>`;
+
+                html += `<td class="p-2.5 sticky-col-4 bg-sticky border-r border-slate-200 truncate" title="${escapeHtml(task.assigned)}">${assignedBadge}</td>`;
+
+                const badgeColor = task.percentComplete === 100 ? 'bg-emerald-100 text-emerald-800' : (task.percentComplete > 0 ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-600');
+                html += `<td class="p-2 sticky-col-5 bg-sticky text-center border-r border-slate-200">`;
+                html += `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${badgeColor}">${task.percentComplete}%</span>`;
+                html += `</td>`;
+
+                // Timeline Days Grid
+                days.forEach(day => {
+                    const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+                    const dayTime = day.getTime();
+                    const dateStr = getLocalDateString(day);
+                    const isToday = (dateStr === todayStr);
+                    const isHoliday = holidayDates.has(dateStr);
+
+                    let isWithinRange = false;
+                    if (task.startDate && task.endDate) {
+                        const sTime = task.startDate.getTime();
+                        const eTime = task.endDate.getTime();
+                        if (dayTime >= sTime && dayTime <= eTime) {
+                            isWithinRange = true;
+                        }
+                    }
+
+                    let cellBg = '';
+                    if (isWeekend) {
+                        cellBg = 'bg-slate-100';
+                    }
+                    if (isHoliday) {
+                        cellBg = 'bg-rose-50 border-x border-rose-200';
+                    } else if (isToday) {
+                        cellBg = 'bg-indigo-50/70 border-x border-indigo-200';
+                    }
+
+                    html += `<td class="p-0 border-r border-slate-200 text-center relative ${cellBg}">`;
+
+                    if (isWithinRange && !isWeekend && !isHoliday) {
+                        const completeWidth = task.percentComplete;
+                        const remainingWidth = 100 - completeWidth;
+
+                        html += `<div class="h-6 mx-1 rounded flex overflow-hidden shadow-sm border border-slate-300/60 cursor-pointer group relative" `;
+                        html += `title="${escapeHtml(task.title)}\nBắt đầu: ${formatDateDisplay(task.startDate)}\nKết thúc: ${formatDateDisplay(task.endDate)}\nTiến độ: ${task.percentComplete}%">`;
+
+                        if (completeWidth > 0) {
+                            html += `<div class="bg-indigo-600 h-full flex items-center justify-center text-[9px] text-white font-bold" style="width: ${completeWidth}%"></div>`;
+                        }
+
+                        if (remainingWidth > 0) {
+                            html += `<div class="bg-amber-400 stripe-pattern opacity-80 h-full" style="width: ${remainingWidth}%"></div>`;
+                        }
+
+                        html += `</div>`;
+                    }
+
+                    html += `</td>`;
+                });
+
+                html += `</tr>`;
+            });
+
+            html += `</tbody></table>`;
+            container.innerHTML = html;
+        }
+
+        function loadDefaultSampleData() {
+            const sampleCSV = `No.,Feature Group,Title,Assigned,Priority,Start Date,End Date,Planned Hours,Actual Hours,% Complete,Status,Notes
+1,Set up the development environment,Set up the ATS Connector locally,Unassigned,Medium,21/07/2026,21/07/2026,16,8,50%,In Progress,
+2,Set up the development environment,Research & Implement authentication flow,Unassigned,Medium,20/07/2026,20/07/2026,8,8,100%,Done,
+3,Set up the development environment,Set up LocalStack to mock AWS services,Unassigned,Medium,,,,0%,Todo,
+4,Set up the development environment,Research the required separation,Unassigned,Medium,,,,0%,Todo,
+5,Sync Hito-Link job data,Design ATS database schema,teamHieu,Medium,22/07/2026,25/07/2026,24,0,0%,Todo,
+6,Sync Hito-Link job data,Map CSV columns to ATS database fields,Unassigned,Medium,,,,0%,Todo,
+7,Sync Hito-Link job data,Define job synchronization strategy,Hieu,High,24/07/2026,28/07/2026,16,0,0%,Todo,`;
+
+            parseCSVData(sampleCSV);
+        }
+
+        function formatDateDisplay(d) {
+            if (!d) return 'N/A';
+            return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
+        }
+
+        async function saveTimelineRange(startDate, endDate) {
+            try {
+                await fetch(API_TIMELINE_PATH, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ startDate, endDate })
+                });
+            } catch (err) {
+                console.warn('Không thể lưu timeline range:', err);
+            }
+        }
+
+        function openHolidaySettings() {
+            document.getElementById('holidayDate').value = '';
+            document.getElementById('holidayName').value = '';
+            renderHolidaySettings();
+            document.getElementById('holidayModal').classList.remove('hidden');
+            document.getElementById('holidayModal').classList.add('flex');
+        }
+
+        function closeHolidaySettings() {
+            document.getElementById('holidayModal').classList.add('hidden');
+            document.getElementById('holidayModal').classList.remove('flex');
+        }
+
+        function renderHolidaySettings() {
+            const list = document.getElementById('holidayList');
+            const count = document.getElementById('holidayCount');
+            if (!holidays || holidays.length === 0) {
+                list.innerHTML = `<div class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-slate-500">${t('noHolidaysYet')}</div>`;
+            } else {
+                list.innerHTML = holidays.map((item, index) => {
+                    return `
+                        <div class="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-3">
+                            <div>
+                                <div class="font-semibold text-slate-800">${escapeHtml(item.name)}</div>
+                                <div class="text-slate-500 text-[11px]">${escapeHtml(item.date)}</div>
+                            </div>
+                            <button onclick="removeHolidayItem(${index})" class="rounded-xl bg-red-500 hover:bg-red-600 text-white text-[11px] font-semibold px-3 py-1">${t('btnRemove')}</button>
+                        </div>`;
+                }).join('');
+            }
+            count.innerText = t('holidayCountSuffix', { n: holidays.length });
+        }
+
+        function addHolidayItem() {
+            const dateInput = document.getElementById('holidayDate');
+            const nameInput = document.getElementById('holidayName');
+            const date = dateInput.value;
+            const name = nameInput.value.trim();
+            if (!date || !name) {
+                alert(t('alertHolidayRequired'));
+                return;
+            }
+            const exists = holidays.findIndex(h => h.date === date);
+            if (exists !== -1) {
+                holidays[exists].name = name;
+            } else {
+                holidays.push({ date, name });
+            }
+            dateInput.value = '';
+            nameInput.value = '';
+            renderHolidaySettings();
+        }
+
+        function removeHolidayItem(index) {
+            holidays.splice(index, 1);
+            renderHolidaySettings();
+        }
+
+        async function saveHolidaySettings() {
+            try {
+                const response = await fetch(API_HOLIDAYS_PATH, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ holidays })
+                });
+                if (!response.ok) throw new Error('Không thể lưu ngày lễ');
+                const updated = await response.json();
+                holidays = Array.isArray(updated) ? updated : holidays;
+                closeHolidaySettings();
+                renderGantt();
+            } catch (err) {
+                alert(t('alertHolidaySaveFail'));
+            }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        }
+    </script>
+</body>
+
+</html>
