@@ -3,3 +3,11 @@ node_modules/
 .env
 .env.local
 *.log
+
+.vercel
+.env*
+
+# Auto-installed agent/skill docs (from Vercel integrations), not part of the app
+.agents/
+.claude/
+skills-lock.json

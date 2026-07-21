@@ -1,11 +1,17 @@
 const express = require('express');
+const path = require('path');
 const { loadData, saveData } = require('./lib/store');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
-app.use(express.static(__dirname));
+
+// Served via an explicit, statically-traceable route (instead of express.static)
+// so Vercel's build tracer bundles index.html into the serverless function.
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
 
 app.get('/api/tasks', async (req, res) => {
     const data = await loadData();
