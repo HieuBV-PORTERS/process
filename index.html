@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="ja">
 
 <head>
     <meta charset="UTF-8">
@@ -635,6 +635,9 @@
                 alertTaskSaveFail: 'Lưu task thất bại. Hãy kiểm tra kết nối server.',
                 alertTaskDeleteFail: 'Xóa task thất bại. Hãy kiểm tra kết nối server.',
                 confirmDeleteTask: 'Bạn có chắc chắn muốn xóa task này?',
+                confirmImportReplace: 'Import CSV sẽ thay thế toàn bộ danh sách task hiện tại trên server. Tiếp tục?',
+                alertImportFail: 'Import CSV thất bại. Hãy kiểm tra kết nối server.',
+                alertImportEmpty: 'Không tìm thấy dữ liệu hợp lệ trong file CSV.',
                 gateTitle: 'Yêu cầu Passcode',
                 gateSubtitle: 'Nhập passcode để truy cập bảng theo dõi tiến độ.',
                 gatePlaceholder: 'Nhập passcode...',
@@ -723,6 +726,9 @@
                 alertTaskSaveFail: 'Failed to save task. Please check the server connection.',
                 alertTaskDeleteFail: 'Failed to delete task. Please check the server connection.',
                 confirmDeleteTask: 'Are you sure you want to delete this task?',
+                confirmImportReplace: 'Importing this CSV will replace all current tasks on the server. Continue?',
+                alertImportFail: 'CSV import failed. Please check the server connection.',
+                alertImportEmpty: 'No valid data found in the CSV file.',
                 gateTitle: 'Passcode Required',
                 gateSubtitle: 'Enter the passcode to access the progress dashboard.',
                 gatePlaceholder: 'Enter passcode...',
@@ -811,6 +817,9 @@
                 alertTaskSaveFail: 'タスクの保存に失敗しました。サーバー接続を確認してください。',
                 alertTaskDeleteFail: 'タスクの削除に失敗しました。サーバー接続を確認してください。',
                 confirmDeleteTask: '本当にこのタスクを削除しますか？',
+                confirmImportReplace: 'このCSVをインポートすると、サーバー上の現在のタスクがすべて置き換えられます。続行しますか？',
+                alertImportFail: 'CSVのインポートに失敗しました。サーバー接続を確認してください。',
+                alertImportEmpty: 'CSVファイルに有効なデータが見つかりませんでした。',
                 gateTitle: 'パスコードが必要です',
                 gateSubtitle: '進捗ダッシュボードにアクセスするにはパスコードを入力してください。',
                 gatePlaceholder: 'パスコードを入力...',
@@ -819,7 +828,7 @@
             }
         };
 
-        let currentLang = localStorage.getItem('appLang') || 'vi';
+        let currentLang = localStorage.getItem('appLang') || 'ja';
 
         function t(key, vars) {
             const dict = TRANSLATIONS[currentLang] || TRANSLATIONS.vi;
@@ -833,7 +842,7 @@
         }
 
         function setLanguage(lang) {
-            currentLang = TRANSLATIONS[lang] ? lang : 'vi';
+            currentLang = TRANSLATIONS[lang] ? lang : 'ja';
             localStorage.setItem('appLang', currentLang);
             applyTranslations();
         }
@@ -983,28 +992,34 @@
             const file = event.target.files[0];
             if (!file) return;
 
+            if (!confirm(t('confirmImportReplace'))) {
+                event.target.value = '';
+                return;
+            }
+
             const reader = new FileReader();
             reader.onload = function (e) {
-                parseCSVData(e.target.result);
+                parseCSVData(e.target.result, { sync: true });
             };
             reader.readAsText(file);
+            event.target.value = '';
         }
 
-        function parseCSVData(content) {
+        function parseCSVData(content, options = {}) {
             Papa.parse(content, {
                 header: true,
                 skipEmptyLines: true,
                 dynamicTyping: false,
                 complete: function (results) {
-                    processParsedRows(results.data);
+                    processParsedRows(results.data, options);
                 },
                 error: function () {
-                    parseRawTextFallback(content);
+                    parseRawTextFallback(content, options);
                 }
             });
         }
 
-        function parseRawTextFallback(text) {
+        function parseRawTextFallback(text, options = {}) {
             const lines = text.trim().split('\n');
             const data = [];
             lines.forEach((line, index) => {
@@ -1027,7 +1042,7 @@
                     });
                 }
             });
-            processParsedRows(data);
+            processParsedRows(data, options);
         }
 
         function processServerRows(data) {
@@ -1068,11 +1083,11 @@
             applyFilters();
         }
 
-        function processParsedRows(data) {
-            const now = new Date();
-            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        async function processParsedRows(data, options = {}) {
+            const { sync = false } = options;
+            const meaningfulRows = data.filter(item => String(item['Title'] || '').trim() || String(item['Feature Group'] || '').trim());
 
-            rawTasks = data.map((item, idx) => {
+            const payloadTasks = meaningfulRows.map((item) => {
                 const planned = parseFloat(item['Planned Hours']) || 0;
                 const actual = parseFloat(item['Actual Hours']) || 0;
                 let pctRaw = String(item['% Complete'] || '0').replace('%', '').trim();
@@ -1081,34 +1096,44 @@
                 const parsedStart = parseFlexibleDate(item['Start Date']);
                 const parsedEnd = parseFlexibleDate(item['End Date']);
 
-                const isOriginalEndDateMissing = !parsedEnd;
-
-                const startDate = parsedStart || parsedEnd || new Date(today);
-                const endDate = parsedEnd || new Date(today);
-
-                const remainingHours = Math.max(0, planned * (1 - percent / 100));
-
                 return {
-                    id: item['No.'] || (idx + 1),
                     group: item['Feature Group'] || 'Chưa phân nhóm',
                     title: item['Title'] || 'Không có tiêu đề',
                     assigned: item['Assigned'] || 'Unassigned',
                     priority: item['Priority'] || 'Medium',
-                    startDate: startDate,
-                    endDate: endDate,
-                    hasOriginalDates: (!isOriginalEndDateMissing && !!parsedStart),
-                    isOriginalEndDateMissing: isOriginalEndDateMissing,
+                    startDate: parsedStart ? getLocalDateString(parsedStart) : '',
+                    endDate: parsedEnd ? getLocalDateString(parsedEnd) : '',
                     plannedHours: planned,
                     actualHours: actual,
                     percentComplete: percent,
-                    remainingHours: remainingHours,
                     status: item['Status'] || (percent === 100 ? 'Done' : (percent > 0 ? 'In Progress' : 'Todo')),
                     notes: item['Notes'] || ''
                 };
             });
 
-            populateDropdowns();
-            applyFilters();
+            if (payloadTasks.length === 0) {
+                if (sync) alert(t('alertImportEmpty'));
+                return;
+            }
+
+            if (!sync) {
+                // Offline/demo preview only (eg. sample data fallback) - not persisted to the server.
+                processServerRows(payloadTasks);
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_TASKS_PATH}/import`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tasks: payloadTasks })
+                });
+                if (!response.ok) throw new Error('Import thất bại');
+                const saved = await response.json();
+                processServerRows(saved.tasks || []);
+            } catch (err) {
+                alert(t('alertImportFail'));
+            }
         }
 
         function parseFlexibleDate(dateStr) {
@@ -1607,7 +1632,7 @@
 6,Sync Hito-Link job data,Map CSV columns to ATS database fields,Unassigned,Medium,,,,0%,Todo,
 7,Sync Hito-Link job data,Define job synchronization strategy,Hieu,High,24/07/2026,28/07/2026,16,0,0%,Todo,`;
 
-            parseCSVData(sampleCSV);
+            parseCSVData(sampleCSV, { sync: false });
         }
 
         function formatDateDisplay(d) {

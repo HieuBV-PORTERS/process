@@ -63,6 +63,29 @@ app.post('/api/tasks', async (req, res) => {
     res.status(201).json(newTask);
 });
 
+app.post('/api/tasks/import', async (req, res) => {
+    const data = await loadData();
+    const incoming = Array.isArray(req.body.tasks) ? req.body.tasks : [];
+
+    const tasks = incoming.map((payload, idx) => ({
+        id: String(idx + 1),
+        group: payload.group || 'Chưa phân nhóm',
+        title: payload.title || 'Không có tiêu đề',
+        assigned: payload.assigned || 'Unassigned',
+        priority: payload.priority || 'Medium',
+        startDate: payload.startDate || '',
+        endDate: payload.endDate || '',
+        plannedHours: Number(payload.plannedHours) || 0,
+        actualHours: Number(payload.actualHours) || 0,
+        percentComplete: Number(payload.percentComplete) || 0,
+        status: payload.status || (payload.percentComplete === 100 ? 'Done' : (payload.percentComplete > 0 ? 'In Progress' : 'Todo')),
+        notes: payload.notes || ''
+    }));
+
+    const updated = await saveData({ timeline: data.timeline, tasks, holidays: data.holidays, settings: data.settings });
+    res.status(201).json({ tasks: updated.tasks });
+});
+
 app.put('/api/tasks/:id', async (req, res) => {
     const data = await loadData();
     const tasks = Array.isArray(data.tasks) ? data.tasks : [];
