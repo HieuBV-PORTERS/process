@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project Roadmap — Jul → Oct</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #12151b;
+    --panel: #1a1e26;
+    --grid-line: #262b35;
+    --grid-line-soft: #1f232c;
+    --text-primary: #e9ebee;
+    --text-muted: #838c9c;
+    --text-faint: #565e6d;
+
+    --c-freeze: #7c8798;
+    --c-dev: #4c7ef5;
+    --c-demo: #33a7a0;
+    --c-deploy: #e3a857;
+    --c-qa: #c25b6b;
+    --c-fixbug: #9b6bc2;
+    --c-golive: #4bb573;
+    --c-demo-soft: rgba(51,167,160,0.16);
+
+    --today-line: #e9ebee;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: 'Inter', sans-serif;
+  }
+
+  body {
+    padding: 56px 24px 80px;
+  }
+
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+  }
+
+  /* ---------- Header ---------- */
+  .header {
+    margin-bottom: 44px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--c-dev);
+    margin: 0 0 10px;
+  }
+
+  h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 34px;
+    line-height: 1.15;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+
+  .header-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: right;
+    line-height: 1.7;
+  }
+  .header-meta span { color: var(--text-primary); }
+
+  /* ---------- Legend ---------- */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--grid-line);
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12.5px;
+    color: var(--text-muted);
+  }
+  .legend-dot {
+    width: 9px; height: 9px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  /* ---------- Timeline grid ---------- */
+  .board {
+    background: var(--panel);
+    border: 1px solid var(--grid-line);
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .grid-scroll {
+    overflow-x: auto;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 240px repeat(16, minmax(46px, 1fr));
+    min-width: 900px;
+    position: relative;
+  }
+
+  /* month row */
+  .month-cell {
+    grid-row: 1;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 13.5px;
+    color: var(--text-primary);
+    padding: 16px 10px 8px;
+    border-bottom: 1px solid var(--grid-line);
+    text-align: center;
+    background: #1e232c;
+  }
+  .month-cell.label-col { background: var(--panel); border-right: 1px solid var(--grid-line); }
+
+  /* week row */
+  .week-cell {
+    grid-row: 2;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    color: var(--text-faint);
+    padding: 6px 4px 10px;
+    text-align: center;
+    border-bottom: 1px solid var(--grid-line);
+    border-right: 1px solid var(--grid-line-soft);
+  }
+  .week-cell.label-col { border-right: 1px solid var(--grid-line); background: var(--panel); }
+
+  /* task label column */
+  .task-label {
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    border-right: 1px solid var(--grid-line);
+    border-bottom: 1px solid var(--grid-line-soft);
+    background: var(--panel);
+    min-height: 52px;
+  }
+  .task-label .dot {
+    width: 8px; height: 8px;
+    border-radius: 2px;
+    margin-right: 10px;
+    flex-shrink: 0;
+  }
+
+  .row-bg {
+    grid-column: 2 / span 16;
+    border-bottom: 1px solid var(--grid-line-soft);
+    min-height: 52px;
+    position: relative;
+    background:
+      repeating-linear-gradient(
+        to right,
+        transparent 0, transparent calc(25% - 1px),
+        var(--grid-line) calc(25% - 1px), var(--grid-line) 25%
+      );
+  }
+
+  .bar {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 26px;
+    border-radius: 6px;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.15) inset;
+  }
+
+  /* Annotation lane: a dedicated strip above the task rows that calls out
+     specific dates (e.g. the two demo/feedback checkpoints) as clear pill
+     tags, each connected to its exact date by a dashed guideline running
+     down through the whole chart. Much easier to spot than a tiny label
+     squeezed inside a bar. */
+  .annotation-lane {
+    display: grid;
+    grid-template-columns: 240px repeat(16, minmax(46px, 1fr));
+    border-bottom: 1px solid var(--grid-line);
+    background: #1e232c;
+  }
+  .annotation-lane-label {
+    border-right: 1px solid var(--grid-line);
+  }
+  .annotation-lane-track {
+    grid-column: 2 / span 16;
+    position: relative;
+    min-height: 40px;
+  }
+  .annotation-pin {
+    position: absolute;
+    top: 7px;
+    transform: translateX(-50%);
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 500;
+    font-family: 'JetBrains Mono', monospace;
+    white-space: nowrap;
+    background: var(--c-demo-soft);
+    border: 1px solid var(--c-demo);
+    color: var(--c-demo);
+    cursor: default;
+  }
+  .annotation-pin::after {
+    content: '';
+    position: absolute;
+    bottom: -7px;
+    left: 50%;
+    width: 1px;
+    height: 7px;
+    background: var(--c-demo);
+  }
+
+  /* dashed guideline connecting an annotation pin to its exact date column */
+  .demo-marker {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    border-left: 1.5px dashed var(--c-demo);
+    opacity: 0.55;
+    z-index: 3;
+    pointer-events: none;
+  }
+
+  .milestone {
+    position: absolute;
+    top: 50%;
+    left: calc(15/16 * 100% + 1.5%);
+    transform: translate(-50%, -50%) rotate(45deg);
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    background: var(--c-golive);
+    box-shadow: 0 0 0 4px rgba(75,181,115,0.15);
+  }
+  /* today marker */
+  .today-marker {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--today-line);
+    opacity: 0.55;
+    z-index: 5;
+  }
+  .today-flag {
+    position: absolute;
+    top: -22px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--bg);
+    background: var(--today-line);
+    padding: 2px 7px;
+    border-radius: 4px;
+    white-space: nowrap;
+    font-weight: 500;
+  }
+
+  /* ---------- Footnote ---------- */
+  .footnote {
+    margin-top: 20px;
+    font-size: 12px;
+    color: var(--text-faint);
+    line-height: 1.6;
+    max-width: 640px;
+  }
+
+  @media (max-width: 640px) {
+    h1 { font-size: 24px; }
+    .header { flex-direction: column; align-items: flex-start; }
+    .header-meta { text-align: left; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <div>
+      <p class="eyebrow">Roadmap · Development → Production</p>
+      <h1>Project Roadmap<br>July → October</h1>
+    </div>
+    <div class="header-meta">
+      Updated: <span>Jul 24, 2026</span><br>
+      Sprint length: <span>1 weeks</span><br>
+      Goal: <span>Go-live, Week 1-2 of October</span>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><span class="legend-dot" style="background:var(--c-freeze)"></span>Feature Freeze &amp; Scope Lock</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--c-dev)"></span>Code Complete &amp; Integration</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--c-demo)"></span>Demo (local) &amp; fix based on feedback</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--c-deploy)"></span>Prepare deployment plan</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--c-qa)"></span>QA &amp; Testing</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--c-fixbug)"></span>Fix bug</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--c-golive)"></span>Go live</div>
+  </div>
+
+  <div class="board">
+    <div class="grid-scroll">
+      <div class="grid" id="grid">
+
+        <!-- Month header row -->
+        <div class="month-cell label-col"></div>
+        <div class="month-cell" style="grid-column: 2 / span 4;">July</div>
+        <div class="month-cell" style="grid-column: 6 / span 4;">August</div>
+        <div class="month-cell" style="grid-column: 10 / span 4;">September</div>
+        <div class="month-cell" style="grid-column: 14 / span 4;">October</div>
+
+        <!-- Week header row -->
+        <div class="week-cell label-col"></div>
+        <div class="week-cell">W1</div><div class="week-cell">W2</div><div class="week-cell">W3</div><div class="week-cell">W4</div>
+        <div class="week-cell">W1</div><div class="week-cell">W2</div><div class="week-cell">W3</div><div class="week-cell">W4</div>
+        <div class="week-cell">W1</div><div class="week-cell">W2</div><div class="week-cell">W3</div><div class="week-cell">W4</div>
+        <div class="week-cell">W1</div><div class="week-cell">W2</div><div class="week-cell">W3</div><div class="week-cell">W4</div>
+
+      </div>
+    </div>
+
+    <!-- Annotation lane: pill tags calling out specific dates (e.g. demo days) -->
+    <div class="annotation-lane">
+      <div class="annotation-lane-label"></div>
+      <div class="annotation-lane-track" id="annotation-track"></div>
+    </div>
+
+    <!-- Task rows built separately so bars can be absolutely positioned per-row -->
+    <div id="rows"></div>
+  </div>
+
+  <p class="footnote">
+    * The original data table used merged cells, so once pasted here only the start point of each task remained.
+    Each bar's duration above is inferred using the rule: a task ends right before the next task begins.
+    The white line marks "today" (Jul 24, 2026).
+  </p>
+
+</div>
+
+<script>
+  // Each task: { name, colorVar, startCol (1-16), endCol (1-16 inclusive), row }
+  const tasks = [
+    { name: "Feature Freeze & Scope Lock", color: "var(--c-freeze)", start: 1, end: 1 },
+    { name: "Code Complete & Integration", color: "var(--c-dev)", start: 2, end: 4 },
+    { name: "Demo (local) & fix based on feedback", color: "var(--c-demo)", start: 5, end: 7,
+      checkpoints: [
+        { boundary: 4, label: "Demo #1: Aug 3\u20135", title: "Demo (local) #1 \u2014 collect feedback (Aug 3\u20135)" },
+        { boundary: 7, label: "Demo #2: end of Aug W3", title: "Demo (local) #2 \u2014 iterate based on feedback from Demo #1" }
+      ]
+    },
+    { name: "Prepare deployment plan", color: "var(--c-deploy)", start: 8, end: 9 },
+    { name: "QA & Testing", color: "var(--c-qa)", start: 10, end: 10 },
+    { name: "Fix bug", color: "var(--c-fixbug)", start: 11, end: 13 },
+    { name: "Go live", color: "var(--c-golive)", start: 14, end: 14, milestone: true },
+  ];
+
+  const totalCols = 16;
+  const rowsEl = document.getElementById('rows');
+
+  tasks.forEach(t => {
+    const row = document.createElement('div');
+    row.style.display = 'grid';
+    row.style.gridTemplateColumns = '240px repeat(16, minmax(46px, 1fr))';
+
+    const label = document.createElement('div');
+    label.className = 'task-label';
+    label.innerHTML = `<span class="dot" style="background:${t.color}"></span>${t.name}`;
+    row.appendChild(label);
+
+    const bg = document.createElement('div');
+    bg.className = 'row-bg';
+
+    if (t.milestone) {
+      const leftPct = ((t.start - 1) / totalCols) * 100 + (1/totalCols)*100/2;
+      const m = document.createElement('div');
+      m.className = 'milestone';
+      m.style.left = leftPct + '%';
+      bg.appendChild(m);
+    } else {
+      const leftPct = ((t.start - 1) / totalCols) * 100;
+      const widthPct = ((t.end - t.start + 1) / totalCols) * 100;
+      const bar = document.createElement('div');
+      bar.className = 'bar';
+      bar.style.left = `calc(${leftPct}% + 4px)`;
+      bar.style.width = `calc(${widthPct}% - 8px)`;
+      bar.style.background = t.color;
+      bg.appendChild(bar);
+    }
+
+    row.appendChild(bg);
+    rowsEl.appendChild(row);
+  });
+
+  // Today marker: Jul 24, 2026 falls in July, Week 4 -> column index 4 (1-based within the July block) -> global col 4
+  const todayCol = 4; // July W4
+  const todayLeftPct = ((todayCol - 1) / totalCols) * 100 + (1/totalCols)*100/2;
+
+  const board = document.querySelector('.board');
+  const marker = document.createElement('div');
+  marker.className = 'today-marker';
+  marker.style.left = `calc(240px + (100% - 240px) * ${todayLeftPct / 100})`;
+  const flag = document.createElement('div');
+  flag.className = 'today-flag';
+  flag.textContent = 'Today';
+  marker.appendChild(flag);
+
+  // position marker relative to board (need board to be positioned)
+  const gridScroll = document.querySelector('.grid-scroll');
+  gridScroll.style.position = 'relative';
+  marker.style.position = 'absolute';
+  gridScroll.appendChild(marker);
+
+  // Checkpoint annotations (e.g. the demo/feedback dates): a pill tag in the
+  // annotation lane plus a dashed guideline running down through the whole
+  // chart, so it's immediately clear which exact day the demo falls on.
+  const annotationTrack = document.getElementById('annotation-track');
+  tasks.forEach(t => {
+    (t.checkpoints || []).forEach(cp => {
+      const cpLeftPct = (cp.boundary / totalCols) * 100;
+
+      const pin = document.createElement('div');
+      pin.className = 'annotation-pin';
+      pin.style.left = cpLeftPct + '%';
+      pin.textContent = cp.label;
+      pin.title = cp.title;
+      annotationTrack.appendChild(pin);
+
+      const line = document.createElement('div');
+      line.className = 'demo-marker';
+      line.style.left = `calc(240px + (100% - 240px) * ${cpLeftPct / 100})`;
+      board.appendChild(line);
+    });
+  });
+</script>
+
+</body>
+</html>

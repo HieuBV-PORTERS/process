@@ -13,6 +13,12 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+// Served via an explicit route (same reasoning as above) so it works both
+// locally and when bundled into the Vercel serverless function.
+app.get('/gantt-of-ats-project.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'gantt-of-ats-project.html'));
+});
+
 app.get('/api/tasks', async (req, res) => {
     const data = await loadData();
     const { settings, ...safeData } = data;

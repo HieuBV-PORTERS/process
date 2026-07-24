@@ -142,8 +142,24 @@
             color: #ffffff;
             border-color: #4f46e5;
         }
+
+        /* Main tab navigation (Dashboard / Roadmap) */
+        .main-tab-btn {
+            background-color: transparent;
+            color: #64748b;
+        }
+
+        .main-tab-btn:hover {
+            background-color: #f1f5f9;
+        }
+
+        .main-tab-btn.active {
+            background-color: #4f46e5;
+            color: #ffffff;
+        }
     </style>
 </head>
+
 
 <body class="bg-slate-100 text-slate-800 font-sans antialiased min-h-screen p-4 md:p-6">
 
@@ -257,6 +273,23 @@
                 </button>
             </div>
         </header>
+
+        <!-- Main Tab Navigation -->
+        <div class="flex items-center gap-2 bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm w-fit">
+            <button onclick="switchMainTab('dashboard')" data-main-tab="dashboard"
+                class="main-tab-btn flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all">
+                <i class="fa-solid fa-table-columns"></i>
+                <span data-i18n="tabDashboard">Bảng theo dõi</span>
+            </button>
+            <button onclick="switchMainTab('roadmap')" data-main-tab="roadmap"
+                class="main-tab-btn flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all">
+                <i class="fa-solid fa-diagram-project"></i>
+                <span data-i18n="tabRoadmap">Roadmap</span>
+            </button>
+        </div>
+
+        <!-- Dashboard Tab Panel -->
+        <div id="tabPanel-dashboard" class="space-y-5">
 
         <!-- Top Metrics Cards -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -396,12 +429,35 @@
 
         <!-- Gantt Chart Container -->
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div class="overflow-x-auto overflow-y-auto max-h-[650px] relative" id="ganttViewport">
+            <div class="overflow-x-auto overflow-y-auto max-h-[1050px] relative" id="ganttViewport">
                 <div id="ganttContainer">
                     <!-- Rendered Table directly here -->
                 </div>
             </div>
         </div>
+
+        </div>
+        <!-- /Dashboard Tab Panel -->
+
+        <!-- Roadmap Tab Panel -->
+        <div id="tabPanel-roadmap" class="hidden">
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="flex items-center justify-between px-5 py-3 border-b border-slate-200">
+                    <div class="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                        <i class="fa-solid fa-diagram-project text-indigo-600"></i>
+                        <span data-i18n="roadmapTitle">Project Roadmap (Gantt)</span>
+                    </div>
+                    <a href="gantt-of-ats-project.html" target="_blank" rel="noopener"
+                        class="flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold text-xs px-3.5 py-2 rounded-xl transition-all border border-indigo-200">
+                        <i class="fa-solid fa-up-right-from-square"></i>
+                        <span data-i18n="roadmapOpenNewTab">Mở tab mới</span>
+                    </a>
+                </div>
+                <iframe id="roadmapFrame" src="" data-src="gantt-of-ats-project.html"
+                    class="w-full border-0" style="height: 85vh;"></iframe>
+            </div>
+        </div>
+        <!-- /Roadmap Tab Panel -->
 
     </div>
 
@@ -555,6 +611,10 @@
         const TRANSLATIONS = {
             vi: {
                 appSubtitle: 'Tự động đồng bộ tiến độ, phân tích thời gian và phân công nhân sự',
+                tabDashboard: 'Bảng theo dõi',
+                tabRoadmap: 'Roadmap',
+                roadmapTitle: 'Lộ trình dự án (Gantt)',
+                roadmapOpenNewTab: 'Mở tab mới',
                 btnReload: 'Tải lại File',
                 lblAutoSync: 'Tự động Sync (3s)',
                 btnChooseCsv: 'Chọn File CSV',
@@ -646,6 +706,10 @@
             },
             en: {
                 appSubtitle: 'Automatically sync progress, analyze timelines, and manage assignments',
+                tabDashboard: 'Dashboard',
+                tabRoadmap: 'Roadmap',
+                roadmapTitle: 'Project Roadmap (Gantt)',
+                roadmapOpenNewTab: 'Open in new tab',
                 btnReload: 'Reload File',
                 lblAutoSync: 'Auto Sync (3s)',
                 btnChooseCsv: 'Choose CSV File',
@@ -737,6 +801,10 @@
             },
             ja: {
                 appSubtitle: '進捗を自動同期し、スケジュールと担当者の割り当てを分析します',
+                tabDashboard: 'ダッシュボード',
+                tabRoadmap: 'ロードマップ',
+                roadmapTitle: 'プロジェクトロードマップ（ガントチャート）',
+                roadmapOpenNewTab: '新しいタブで開く',
                 btnReload: 'ファイルを再読み込み',
                 lblAutoSync: '自動同期 (3秒)',
                 btnChooseCsv: 'CSVファイルを選択',
@@ -847,6 +915,22 @@
             applyTranslations();
         }
 
+        // --- Main Tabs (Dashboard / Roadmap) ---------------------------------
+        function switchMainTab(tab) {
+            document.getElementById('tabPanel-dashboard').classList.toggle('hidden', tab !== 'dashboard');
+            document.getElementById('tabPanel-roadmap').classList.toggle('hidden', tab !== 'roadmap');
+            document.querySelectorAll('.main-tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('data-main-tab') === tab);
+            });
+            if (tab === 'roadmap') {
+                const frame = document.getElementById('roadmapFrame');
+                if (frame && !frame.getAttribute('src')) {
+                    frame.setAttribute('src', frame.getAttribute('data-src'));
+                }
+            }
+            localStorage.setItem('appMainTab', tab);
+        }
+
         function applyTranslations() {
             document.documentElement.lang = currentLang;
             document.querySelectorAll('[data-i18n]').forEach(el => {
@@ -949,6 +1033,7 @@
 
         window.addEventListener('DOMContentLoaded', () => {
             checkAuthGate();
+            switchMainTab(localStorage.getItem('appMainTab') === 'roadmap' ? 'roadmap' : 'dashboard');
         });
 
         function toggleAutoRefresh(checkbox) {
@@ -1486,11 +1571,11 @@
             // --- HEADER ROW 1 ---
             html += `<thead class="bg-slate-900 text-white text-xs sticky-header">`;
             html += `<tr>`;
-            html += `<th rowspan="2" class="p-2 sticky-col-1 border-r border-slate-700">${t('colNo')}</th>`;
-            html += `<th rowspan="2" class="p-2.5 sticky-col-2 border-r border-slate-700">${t('colFeatureGroup')}</th>`;
-            html += `<th rowspan="2" class="p-2.5 sticky-col-3 border-r border-slate-700">${t('colTaskName')}</th>`;
-            html += `<th rowspan="2" class="p-2.5 sticky-col-4 border-r border-slate-700">${t('colAssigned')}</th>`;
-            html += `<th rowspan="2" class="p-2 sticky-col-5 text-center border-r border-slate-700">${t('colPercentDone')}</th>`;
+            html += `<th rowspan="2" class="px-2 py-0 sticky-col-1 border-r border-slate-700">${t('colNo')}</th>`;
+            html += `<th rowspan="2" class="px-2.5 py-0 sticky-col-2 border-r border-slate-700">${t('colFeatureGroup')}</th>`;
+            html += `<th rowspan="2" class="px-2.5 py-0 sticky-col-3 border-r border-slate-700">${t('colTaskName')}</th>`;
+            html += `<th rowspan="2" class="px-2.5 py-0 sticky-col-4 border-r border-slate-700">${t('colAssigned')}</th>`;
+            html += `<th rowspan="2" class="px-2 py-0 sticky-col-5 text-center border-r border-slate-700">${t('colPercentDone')}</th>`;
 
             monthGroups.forEach(m => {
                 html += `<th colspan="${m.count}" class="p-1.5 text-center bg-slate-800 border-r border-b border-slate-700 font-bold text-[11px] text-indigo-300 tracking-wide uppercase">${m.label}</th>`;
@@ -1558,10 +1643,10 @@
                     ? `<span class="text-slate-400 bg-slate-100 px-2 py-0.5 rounded text-[10px] truncate block max-w-full">${t('unassignedLabel')}</span>`
                     : `<span class="text-indigo-700 bg-indigo-50 border border-indigo-100 font-semibold px-2 py-0.5 rounded text-[10px] flex items-center gap-1 w-fit max-w-full truncate"><i class="fa-solid fa-user text-[9px]"></i> ${escapeHtml(task.assigned)}</span>`;
 
-                html += `<td class="p-2.5 sticky-col-4 bg-sticky border-r border-slate-200 truncate" title="${escapeHtml(task.assigned)}">${assignedBadge}</td>`;
+                html += `<td class="px-2.5 py-1 sticky-col-4 bg-sticky border-r border-slate-200 truncate" title="${escapeHtml(task.assigned)}">${assignedBadge}</td>`;
 
                 const badgeColor = task.percentComplete === 100 ? 'bg-emerald-100 text-emerald-800' : (task.percentComplete > 0 ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-600');
-                html += `<td class="p-2 sticky-col-5 bg-sticky text-center border-r border-slate-200">`;
+                html += `<td class="px-2 py-1 sticky-col-5 bg-sticky text-center border-r border-slate-200">`;
                 html += `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${badgeColor}">${task.percentComplete}%</span>`;
                 html += `</td>`;
 
