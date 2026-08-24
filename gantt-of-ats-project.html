@@ -311,7 +311,7 @@
       <h1>Project Roadmap<br>July → October</h1>
     </div>
     <div class="header-meta">
-      Updated: <span>Jul 24, 2026</span><br>
+      Updated: <span id="updatedDate">Jul 24, 2026</span><br>
       Sprint length: <span>1 weeks</span><br>
       Goal: <span>Go-live, Week 1-2 of October</span>
     </div>
@@ -361,7 +361,7 @@
   <p class="footnote">
     * The original data table used merged cells, so once pasted here only the start point of each task remained.
     Each bar's duration above is inferred using the rule: a task ends right before the next task begins.
-    The white line marks "today" (Jul 24, 2026).
+    The white line marks "today" (<span id="footnoteTodayDate">Jul 24, 2026</span>), computed live from the current date.
   </p>
 
 </div>
@@ -420,9 +420,22 @@
     rowsEl.appendChild(row);
   });
 
-  // Today marker: Jul 24, 2026 falls in July, Week 4 -> column index 4 (1-based within the July block) -> global col 4
-  const todayCol = 4; // July W4
+  // Today marker: computed live from the real current date, mapped onto the
+  // 16-week timeline grid (July W1 -> Oct W4). Each column = 1 week, starting
+  // Jul 1, 2026 (column 1). Clamped so it still shows a marker even if
+  // "today" falls before/after the visible range.
+  const timelineStartDate = new Date(2026, 6, 1); // Jul 1, 2026 = start of column 1
+  const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+  const now = new Date();
+  const weeksElapsed = Math.floor((now - timelineStartDate) / msPerWeek);
+  const todayCol = Math.min(totalCols, Math.max(1, weeksElapsed + 1));
   const todayLeftPct = ((todayCol - 1) / totalCols) * 100 + (1/totalCols)*100/2;
+  const todayLabel = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+  const updatedDateEl = document.getElementById('updatedDate');
+  if (updatedDateEl) updatedDateEl.textContent = todayLabel;
+  const footnoteTodayDateEl = document.getElementById('footnoteTodayDate');
+  if (footnoteTodayDateEl) footnoteTodayDateEl.textContent = todayLabel;
 
   const board = document.querySelector('.board');
   const marker = document.createElement('div');
@@ -430,7 +443,7 @@
   marker.style.left = `calc(240px + (100% - 240px) * ${todayLeftPct / 100})`;
   const flag = document.createElement('div');
   flag.className = 'today-flag';
-  flag.textContent = 'Today';
+  flag.textContent = `Today · ${todayLabel}`;
   marker.appendChild(flag);
 
   // position marker relative to board (need board to be positioned)

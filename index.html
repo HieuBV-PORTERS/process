@@ -143,23 +143,54 @@
             border-color: #4f46e5;
         }
 
-        /* Main tab navigation (Dashboard / Roadmap) */
+        /* Main section tab buttons (Dashboard / Roadmap) */
         .main-tab-btn {
-            background-color: transparent;
             color: #64748b;
-        }
-
-        .main-tab-btn:hover {
-            background-color: #f1f5f9;
         }
 
         .main-tab-btn.active {
             background-color: #4f46e5;
             color: #ffffff;
         }
+
+        /* Gantt table fullscreen mode */
+        #ganttSectionWrapper:fullscreen {
+            background-color: #ffffff;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #ganttSectionWrapper:fullscreen #ganttViewport {
+            max-height: none !important;
+            flex: 1 1 auto;
+        }
+
+        #ganttSectionWrapper:fullscreen #ganttFullscreenToggle .fa-expand {
+            display: none;
+        }
+
+        #ganttSectionWrapper #ganttFullscreenToggle .fa-compress {
+            display: none;
+        }
+
+        #ganttSectionWrapper:fullscreen #ganttFullscreenToggle .fa-compress {
+            display: inline-block;
+        }
+
+        #ganttSectionWrapper #ganttFullscreenToggle .fs-exit-label {
+            display: none;
+        }
+
+        #ganttSectionWrapper:fullscreen #ganttFullscreenToggle .fs-enter-label {
+            display: none;
+        }
+
+        #ganttSectionWrapper:fullscreen #ganttFullscreenToggle .fs-exit-label {
+            display: inline;
+        }
     </style>
 </head>
-
 
 <body class="bg-slate-100 text-slate-800 font-sans antialiased min-h-screen p-4 md:p-6">
 
@@ -274,16 +305,16 @@
             </div>
         </header>
 
-        <!-- Main Tab Navigation -->
-        <div class="flex items-center gap-2 bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm w-fit">
-            <button onclick="switchMainTab('dashboard')" data-main-tab="dashboard"
-                class="main-tab-btn flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all">
-                <i class="fa-solid fa-table-columns"></i>
-                <span data-i18n="tabDashboard">Bảng theo dõi</span>
+        <!-- Main Tab Nav -->
+        <div class="flex items-center gap-2 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm w-fit">
+            <button id="mainTabBtn-dashboard" onclick="switchMainTab('dashboard')"
+                class="main-tab-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all">
+                <i class="fa-solid fa-gauge"></i>
+                <span data-i18n="tabDashboard">Dashboard</span>
             </button>
-            <button onclick="switchMainTab('roadmap')" data-main-tab="roadmap"
-                class="main-tab-btn flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all">
-                <i class="fa-solid fa-diagram-project"></i>
+            <button id="mainTabBtn-roadmap" onclick="switchMainTab('roadmap')"
+                class="main-tab-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all">
+                <i class="fa-solid fa-timeline"></i>
                 <span data-i18n="tabRoadmap">Roadmap</span>
             </button>
         </div>
@@ -424,11 +455,49 @@
                         <option value="ALL" data-i18n="allGroups">Tất cả Feature Group</option>
                     </select>
                 </div>
+
+                <!-- Task Status Filter -->
+                <div class="relative">
+                    <button type="button" id="statusFilterBtn" onclick="toggleStatusFilterMenu(event)"
+                        class="flex items-center gap-1.5 bg-slate-100 px-3 py-1.5 rounded-lg font-medium text-slate-700 cursor-pointer">
+                        <i class="fa-solid fa-list-check text-slate-500"></i>
+                        <span class="text-slate-500 font-medium" data-i18n="statusFilterLabel">Trạng thái:</span>
+                        <span id="statusFilterSummary" class="text-slate-700"></span>
+                        <i class="fa-solid fa-chevron-down text-[10px] text-slate-400"></i>
+                    </button>
+                    <div id="statusFilterMenu"
+                        class="hidden absolute right-0 z-50 mt-1.5 bg-white border border-slate-200 rounded-lg shadow-lg p-2 min-w-[160px] space-y-1">
+                        <label class="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-50 rounded cursor-pointer text-slate-700">
+                            <input type="checkbox" class="statusFilterCheckbox accent-slate-500" value="TODO" checked
+                                onchange="applyFilters()">
+                            <span data-i18n="statusTodo">Todo</span>
+                        </label>
+                        <label class="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-50 rounded cursor-pointer text-slate-700">
+                            <input type="checkbox" class="statusFilterCheckbox accent-blue-500" value="DOING" checked
+                                onchange="applyFilters()">
+                            <span data-i18n="statusDoing">Doing</span>
+                        </label>
+                        <label class="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-50 rounded cursor-pointer text-slate-700">
+                            <input type="checkbox" class="statusFilterCheckbox accent-emerald-500" value="DONE" checked
+                                onchange="applyFilters()">
+                            <span data-i18n="statusDone">Done</span>
+                        </label>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- Gantt Chart Container -->
-        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div id="ganttSectionWrapper" class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="flex items-center justify-end px-3 py-2 border-b border-slate-100">
+                <button type="button" id="ganttFullscreenToggle" onclick="toggleGanttFullscreen()"
+                    class="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-indigo-600 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 transition-all">
+                    <i class="fa-solid fa-expand"></i>
+                    <i class="fa-solid fa-compress"></i>
+                    <span class="fs-enter-label" data-i18n="btnFullscreen">Toàn màn hình</span>
+                    <span class="fs-exit-label" data-i18n="btnExitFullscreen">Thu nhỏ</span>
+                </button>
+            </div>
             <div class="overflow-x-auto overflow-y-auto max-h-[1050px] relative" id="ganttViewport">
                 <div id="ganttContainer">
                     <!-- Rendered Table directly here -->
@@ -437,27 +506,22 @@
         </div>
 
         </div>
-        <!-- /Dashboard Tab Panel -->
 
         <!-- Roadmap Tab Panel -->
         <div id="tabPanel-roadmap" class="hidden">
             <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                 <div class="flex items-center justify-between px-5 py-3 border-b border-slate-200">
-                    <div class="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                        <i class="fa-solid fa-diagram-project text-indigo-600"></i>
-                        <span data-i18n="roadmapTitle">Project Roadmap (Gantt)</span>
-                    </div>
+                    <h2 class="text-sm font-bold text-slate-900" data-i18n="roadmapTitle">Roadmap</h2>
                     <a href="gantt-of-ats-project.html" target="_blank" rel="noopener"
-                        class="flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold text-xs px-3.5 py-2 rounded-xl transition-all border border-indigo-200">
+                        class="text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1.5">
                         <i class="fa-solid fa-up-right-from-square"></i>
                         <span data-i18n="roadmapOpenNewTab">Mở tab mới</span>
                     </a>
                 </div>
-                <iframe id="roadmapFrame" src="" data-src="gantt-of-ats-project.html"
-                    class="w-full border-0" style="height: 85vh;"></iframe>
+                <iframe id="roadmapFrame" data-src="gantt-of-ats-project.html" class="w-full border-0"
+                    style="height: 1400px;"></iframe>
             </div>
         </div>
-        <!-- /Roadmap Tab Panel -->
 
     </div>
 
@@ -611,10 +675,6 @@
         const TRANSLATIONS = {
             vi: {
                 appSubtitle: 'Tự động đồng bộ tiến độ, phân tích thời gian và phân công nhân sự',
-                tabDashboard: 'Bảng theo dõi',
-                tabRoadmap: 'Roadmap',
-                roadmapTitle: 'Lộ trình dự án (Gantt)',
-                roadmapOpenNewTab: 'Mở tab mới',
                 btnReload: 'Tải lại File',
                 lblAutoSync: 'Tự động Sync (3s)',
                 btnChooseCsv: 'Chọn File CSV',
@@ -642,6 +702,15 @@
                 allAssignees: 'Tất cả nhân sự',
                 groupLabel: 'Feature Group:',
                 allGroups: 'Tất cả Feature Group',
+                statusFilterLabel: 'Trạng thái:',
+                allStatuses: 'Tất cả trạng thái',
+                statusFilterNone: 'Không chọn',
+                tabDashboard: 'Dashboard',
+                tabRoadmap: 'Roadmap',
+                roadmapTitle: 'Roadmap dự án',
+                roadmapOpenNewTab: 'Mở tab mới',
+                btnFullscreen: 'Toàn màn hình',
+                btnExitFullscreen: 'Thu nhỏ',
                 colNo: '#',
                 colFeatureGroup: 'Feature Group',
                 colTaskName: 'Tên Task',
@@ -706,10 +775,6 @@
             },
             en: {
                 appSubtitle: 'Automatically sync progress, analyze timelines, and manage assignments',
-                tabDashboard: 'Dashboard',
-                tabRoadmap: 'Roadmap',
-                roadmapTitle: 'Project Roadmap (Gantt)',
-                roadmapOpenNewTab: 'Open in new tab',
                 btnReload: 'Reload File',
                 lblAutoSync: 'Auto Sync (3s)',
                 btnChooseCsv: 'Choose CSV File',
@@ -737,6 +802,15 @@
                 allAssignees: 'All assignees',
                 groupLabel: 'Feature Group:',
                 allGroups: 'All Feature Groups',
+                statusFilterLabel: 'Status:',
+                allStatuses: 'All statuses',
+                statusFilterNone: 'None selected',
+                tabDashboard: 'Dashboard',
+                tabRoadmap: 'Roadmap',
+                roadmapTitle: 'Project Roadmap',
+                roadmapOpenNewTab: 'Open in new tab',
+                btnFullscreen: 'Fullscreen',
+                btnExitFullscreen: 'Exit fullscreen',
                 colNo: '#',
                 colFeatureGroup: 'Feature Group',
                 colTaskName: 'Task Name',
@@ -801,10 +875,6 @@
             },
             ja: {
                 appSubtitle: '進捗を自動同期し、スケジュールと担当者の割り当てを分析します',
-                tabDashboard: 'ダッシュボード',
-                tabRoadmap: 'ロードマップ',
-                roadmapTitle: 'プロジェクトロードマップ（ガントチャート）',
-                roadmapOpenNewTab: '新しいタブで開く',
                 btnReload: 'ファイルを再読み込み',
                 lblAutoSync: '自動同期 (3秒)',
                 btnChooseCsv: 'CSVファイルを選択',
@@ -832,6 +902,15 @@
                 allAssignees: 'すべての担当者',
                 groupLabel: '機能グループ:',
                 allGroups: 'すべての機能グループ',
+                statusFilterLabel: '状況:',
+                allStatuses: 'すべての状況',
+                statusFilterNone: '選択なし',
+                tabDashboard: 'ダッシュボード',
+                tabRoadmap: 'ロードマップ',
+                roadmapTitle: 'プロジェクトロードマップ',
+                roadmapOpenNewTab: '新しいタブで開く',
+                btnFullscreen: '全画面表示',
+                btnExitFullscreen: '全画面表示を終了',
                 colNo: '#',
                 colFeatureGroup: '機能グループ',
                 colTaskName: 'タスク名',
@@ -915,22 +994,6 @@
             applyTranslations();
         }
 
-        // --- Main Tabs (Dashboard / Roadmap) ---------------------------------
-        function switchMainTab(tab) {
-            document.getElementById('tabPanel-dashboard').classList.toggle('hidden', tab !== 'dashboard');
-            document.getElementById('tabPanel-roadmap').classList.toggle('hidden', tab !== 'roadmap');
-            document.querySelectorAll('.main-tab-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.getAttribute('data-main-tab') === tab);
-            });
-            if (tab === 'roadmap') {
-                const frame = document.getElementById('roadmapFrame');
-                if (frame && !frame.getAttribute('src')) {
-                    frame.setAttribute('src', frame.getAttribute('data-src'));
-                }
-            }
-            localStorage.setItem('appMainTab', tab);
-        }
-
         function applyTranslations() {
             document.documentElement.lang = currentLang;
             document.querySelectorAll('[data-i18n]').forEach(el => {
@@ -943,11 +1006,37 @@
                 btn.classList.toggle('active', btn.getAttribute('data-lang-btn') === currentLang);
             });
             if (document.getElementById('groupFilter')) populateDropdowns();
+            if (document.querySelector('.statusFilterCheckbox')) {
+                updateStatusFilterSummary(Array.from(document.querySelectorAll('.statusFilterCheckbox:checked')).map(cb => cb.value));
+            }
             if (rawTasks.length > 0) {
                 calculateSummaryMetrics();
                 renderGantt();
             }
             if (document.getElementById('holidayList')) renderHolidaySettings();
+        }
+
+        function switchMainTab(tab) {
+            document.getElementById('tabPanel-dashboard').classList.toggle('hidden', tab !== 'dashboard');
+            document.getElementById('tabPanel-roadmap').classList.toggle('hidden', tab !== 'roadmap');
+            document.getElementById('mainTabBtn-dashboard').classList.toggle('active', tab === 'dashboard');
+            document.getElementById('mainTabBtn-roadmap').classList.toggle('active', tab === 'roadmap');
+
+            if (tab === 'roadmap') {
+                const frame = document.getElementById('roadmapFrame');
+                if (frame && !frame.src && frame.dataset.src) {
+                    frame.src = frame.dataset.src;
+                }
+            }
+        }
+
+        function toggleGanttFullscreen() {
+            const wrapper = document.getElementById('ganttSectionWrapper');
+            if (!document.fullscreenElement) {
+                wrapper.requestFullscreen().catch(() => {});
+            } else {
+                document.exitFullscreen().catch(() => {});
+            }
         }
 
         // --- Passcode Gate --------------------------------------------------
@@ -1033,7 +1122,7 @@
 
         window.addEventListener('DOMContentLoaded', () => {
             checkAuthGate();
-            switchMainTab(localStorage.getItem('appMainTab') === 'roadmap' ? 'roadmap' : 'dashboard');
+            switchMainTab('dashboard');
         });
 
         function toggleAutoRefresh(checkbox) {
@@ -1277,11 +1366,46 @@
             assigneeSelect.value = currentAssignee;
         }
 
+        function getTaskStatus(t) {
+            if (t.percentComplete === 100 || t.status.toLowerCase() === 'done') return 'DONE';
+            if (t.percentComplete > 0 || t.status.toLowerCase() === 'in progress') return 'DOING';
+            return 'TODO';
+        }
+
+        function toggleStatusFilterMenu(event) {
+            event.stopPropagation();
+            document.getElementById('statusFilterMenu').classList.toggle('hidden');
+        }
+
+        document.addEventListener('click', (event) => {
+            const menu = document.getElementById('statusFilterMenu');
+            const btn = document.getElementById('statusFilterBtn');
+            if (menu && !menu.classList.contains('hidden') && !menu.contains(event.target) && event.target !== btn && !btn.contains(event.target)) {
+                menu.classList.add('hidden');
+            }
+        });
+
+        function updateStatusFilterSummary(selectedStatuses) {
+            const summaryEl = document.getElementById('statusFilterSummary');
+            if (!summaryEl) return;
+            const labels = { TODO: t('statusTodo'), DOING: t('statusDoing'), DONE: t('statusDone') };
+            if (selectedStatuses.length === 3) {
+                summaryEl.innerText = t('allStatuses');
+            } else if (selectedStatuses.length === 0) {
+                summaryEl.innerText = t('statusFilterNone');
+            } else {
+                summaryEl.innerText = selectedStatuses.map(s => labels[s]).join(', ');
+            }
+        }
+
         function applyFilters() {
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
             const selectedGroup = document.getElementById('groupFilter').value;
             const selectedAssignee = document.getElementById('assigneeFilter').value;
             const dateFilterMode = document.getElementById('dateFilter').value;
+            const selectedStatuses = Array.from(document.querySelectorAll('.statusFilterCheckbox:checked')).map(cb => cb.value);
+
+            updateStatusFilterSummary(selectedStatuses);
 
             let result = rawTasks.filter(t => {
                 const matchesSearch = t.title.toLowerCase().includes(searchTerm) ||
@@ -1289,8 +1413,9 @@
                     t.assigned.toLowerCase().includes(searchTerm);
                 const matchesGroup = selectedGroup === 'ALL' || t.group === selectedGroup;
                 const matchesAssignee = selectedAssignee === 'ALL' || t.assigned === selectedAssignee;
+                const matchesStatus = selectedStatuses.includes(getTaskStatus(t));
 
-                return matchesSearch && matchesGroup && matchesAssignee;
+                return matchesSearch && matchesGroup && matchesAssignee && matchesStatus;
             });
 
             if (dateFilterMode === 'HAS_DATE_ONLY') {
@@ -1330,8 +1455,8 @@
                 totalRemaining += t.remainingHours;
                 sumPercent += t.percentComplete;
 
-                if (t.percentComplete === 100 || t.status.toLowerCase() === 'done') countDone++;
-                else if (t.percentComplete > 0 || t.status.toLowerCase() === 'in progress') countInProgress++;
+                if (getTaskStatus(t) === 'DONE') countDone++;
+                else if (getTaskStatus(t) === 'DOING') countInProgress++;
                 else countTodo++;
             });
 
